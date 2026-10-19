@@ -131,14 +131,15 @@ ${pay}
   };
   const TAG_DESIGNS = {1: "Klassik", 2: "Katta narx", 3: "Chap logo", 4: "Qora sarlavha", 5: "Jadval"};
   function tagHtml(items, size, logo, design) {
-    const w = +size?.w || 58, h = +size?.h || 40, k = h / 40, mm = x => (x * k).toFixed(2) + "mm", d = TAG_DESIGNS[design] ? +design : 1;
+    const w = +size?.w || 58, h = +size?.h || 40, k = h / 40, mm = x => (x * k).toFixed(2) + "mm", d = TAG_DESIGNS[design] ? +design : 1, noRegion = !!size?.noRegion;
     const fit = (t, base, max) => { const n = String(t || "").length; return mm(n > max ? base * max / n : base); };
     const V = (x, base, max, cls = "") => `<b class="${cls}" style="font-size:${fit(x, base, max)}">${v(x)}</b>`;
     const foot = `<div class="foot"><span>${TG}${IG}<em>@barakasavdorasmiy</em></span><span>${PH}<em>73 249-29-29</em></span></div>`;
     const field = (l, x, base, max) => `<div class="f"><i>${l}</i>${V(x, base, max)}</div>`;
     const layouts = {
       1: t => `<div class="r3">${field("Model:", t.model, 3.4, 99)}${field("Xotira:", t.mem, 3.3, 7)}${field("Yomkost:", t.batt, 3.3, 5)}</div>
-        <div class="mid"><div class="f end">${V(t.region, 3.2, 7)}<i>Region:</i></div><div class="lg">${logoSvg()}</div><div class="f end">${V(t.price, 3.8, 99)}<i>Narx:</i></div></div>${foot}`,
+        ${noRegion ? `<div class="mid nr"><div class="lg">${logoSvg()}</div><div class="f end">${V(t.price, 4.6, 99)}<i>Narx:</i></div></div>`
+          : `<div class="mid"><div class="f end">${V(t.region, 3.2, 7)}<i>Region:</i></div><div class="lg">${logoSvg()}</div><div class="f end">${V(t.price, 3.8, 99)}<i>Narx:</i></div></div>`}${foot}`,
       2: t => `<div class="r3">${field("Model:", t.model, 3.4, 99)}${field("Xotira:", t.mem, 3.2, 7)}${field("Yomkost:", t.batt, 3.2, 5)}</div>
         <div class="mid2"><div class="lg sm">${logoSvg()}</div><div class="f">${field("Region:", t.region, 3, 7)}</div></div>
         <div class="pricebar"><i>NARX</i>${V(t.price, 5.2, 11)}</div>${foot}`,
@@ -162,6 +163,7 @@ em{font-style:normal;font-weight:800}
 .f{display:flex;flex-direction:column;align-items:center;text-align:center;gap:${mm(.4)};min-width:0}.f b{display:block;width:100%;border-bottom:${mm(.35)} solid #000;padding-bottom:${mm(.3)}}
 .f.end{justify-content:flex-end}
 .r3{display:grid;grid-template-columns:1.9fr 1fr 1fr;gap:${mm(1.4)}}
+.mid.nr{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:${mm(3)}}.mid.nr .lg svg{max-height:${mm(18)}}
 .mid{flex:1;display:grid;grid-template-columns:1fr .9fr 1.35fr;align-items:end;gap:${mm(1.6)};padding:${mm(.6)} 0 ${mm(1.2)}}
 .lg{display:flex;align-items:center;justify-content:center;height:100%;min-height:0}.lg svg{width:100%;height:100%;max-height:${mm(17)}}
 .lg.sm svg{max-height:${mm(11)}}.lg.tall svg{max-height:${mm(26)}}.lg.line svg{max-height:${mm(5.5)}}
