@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.19-14"></script>
+<script src="shartnoma.js?v=2026.10.19-15"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.19-14";
+const APP_VERSION = "2026.10.19-15";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -924,12 +924,12 @@ function arzAnswers(x) {
 }
 function arzCard(x) {
   const [stL, stC] = ARZ_ST[x.status] || [x.status || "—", "grey"], d = x.device || {}, tel = digits(x.client?.phone);
-  const pay = !x.ourModel ? "Telefonini sotmoqchi" : x.diffUzs <= 0 ? `Mijozga qaytariladi: ${uzs(-x.diffUzs)}` : x.payType === "nasiya" ? `Nasiya: ${uzs(x.monthlyUzs)} × ${x.months} oy` : `Naqd qo'shib to'laydi: ${uzs(x.diffUzs)}`;
+  const pay = isBuyAriza(x) ? (x.payType === "nasiya" ? `Muddatli: ${uzs(x.monthlyUzs)} × ${x.months} oy` : `Naqd: ${uzs(x.ourUzs)}`) : !x.ourModel ? "Telefonini sotmoqchi" : x.diffUzs <= 0 ? `Mijozga qaytariladi: ${uzs(-x.diffUzs)}` : x.payType === "nasiya" ? `Nasiya: ${uzs(x.monthlyUzs)} × ${x.months} oy` : `Naqd qo'shib to'laydi: ${uzs(x.diffUzs)}`;
   return `<div class="card ${x.status === "yangi" ? "new" : ""}">
-  <div class="card-h"><div><span class="badge ${stC}">${esc(stL)}</span>${!x.ourModel ? ' <span class="badge bad">Sotish</span>' : ""} <b>${esc(x.client?.name)}</b> <a class="src" href="tel:+${esc(tel)}">${esc(fmtPhone(tel))}</a></div>
+  <div class="card-h"><div><span class="badge ${stC}">${esc(stL)}</span>${!x.ourModel ? ' <span class="badge bad">Sotish</span>' : ""}${isBuyAriza(x) ? ' <span class="badge">Muddatli xarid</span>' : ""} <b>${esc(x.client?.name)}</b> <a class="src" href="tel:+${esc(tel)}">${esc(fmtPhone(tel))}</a></div>
     <span class="src">№${esc(x.no || x.id.slice(0, 6).toUpperCase())} · ${fdt(x.createdAt)} · ${esc(bName(x.branchId))}</span></div>
   <div class="grid4">
-    <div><div class="k">Topshiradi</div><div class="v">${esc(d.name)} ${esc(d.mem)}</div><div class="src">${esc(d.color || "")}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""}</div></div>
+    <div><div class="k">Topshiradi</div><div class="v">${isBuyAriza(x) ? "—" : esc(d.name) + " " + esc(d.mem)}</div><div class="src">${esc(d.color || "")}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""}</div></div>
     <div><div class="k">Taxminiy baho</div><div class="v">${x.manualUzs ? `<s style="opacity:.55">${uzs(x.deviceUzs)}</s> ${uzs(x.manualUzs)}` : uzs(x.deviceUzs)}</div>${x.manualUzs ? `<div class="src">✎ ${esc(x.manualReason || "")}</div>` : ""}${d.askUzs ? `<div class="src"><b>Mijoz narxi: ${uzs(d.askUzs)}</b></div>` : ""}</div>
     <div><div class="k">Olmoqchi</div><div class="v">${x.ourModel ? esc(x.ourModel) : "—"}</div>${x.ourModel ? `<div class="src">${uzs(x.ourUzs)}</div>` : ""}</div>
     <div><div class="k">To'lov</div><div class="v" style="white-space:normal">${esc(pay)}</div></div>
@@ -937,7 +937,7 @@ function arzCard(x) {
   ${x.note ? `<div class="note" style="margin-bottom:0"><b>Izoh:</b> ${esc(x.note)}</div>` : ""}
   ${x.updatedByName ? `<div class="src" style="margin-top:8px">Oxirgi o'zgartirish: ${esc(x.updatedByName)}, ${fdt(x.updatedAt)}</div>` : ""}
   ${buyInfoHtml(x)}
-  <details><summary>Mijoz javoblari</summary>${arzAnswers(x)}</details>
+  ${isBuyAriza(x) ? "" : `<details><summary>Mijoz javoblari</summary>${arzAnswers(x)}</details>`}
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
     ${buyButtonsHtml(x)}
     ${Object.entries(ARZ_ST).filter(([k]) => k !== x.status && k !== "yangi" && !["olindi", "sotuvda"].includes(k)).map(([k, [l]]) => `<button class="btn ${k === "yakunlandi" ? "pri" : "sec"} sm" data-arz="${x.id}|${k}">${esc(l)}</button>`).join("")}
@@ -1009,6 +1009,8 @@ function guideSvg(i) {
   return `<svg class="guide" viewBox="0 0 120 140" aria-hidden="true">${parts[i]}</svg>`;
 }
 const isSellAriza = x => !x.ourModel;
+// Mijoz faqat bizdan B/U telefon olmoqchi (o'z telefonini topshirmaydi) — muddatli to'lov
+const isBuyAriza = x => !!x.ourModel && !x.device?.name;
 function buyInfoHtml(x) {
   const b = x.bought, l = x.listed;
   if (!b) return "";
@@ -1019,7 +1021,7 @@ function buyInfoHtml(x) {
 }
 function buyButtonsHtml(x) {
   // Sotish murojaatida ham, almashtirish (trade-in) arizasida ham mijoz telefoni sotib olinadi
-  if (x.status === "bekor" || x.status === "yakunlandi") return "";
+  if (isBuyAriza(x) || x.status === "bekor" || x.status === "yakunlandi") return "";
   if (!x.bought) return `<button class="btn green sm" style="flex:none" data-buy="${x.id}">✓ ${isSellAriza(x) ? "Sotib olindi" : "Mijoz telefoni sotib olindi"}</button>`;
   // Almashtirishda: mijoz telefoni olingach — bizning telefon sotiladi (shartnoma shu yerda tuziladi)
   if (!isSellAriza(x)) return x.dealId ? "" : `<button class="btn green sm" style="flex:none" data-sold="${x.id}">✓ Bizning telefon sotildi</button>`;

@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.19-14"></script>
+<script src="shartnoma.js?v=2026.10.19-15"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.19-14";
+const APP_VERSION = "2026.10.19-15";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -920,16 +920,16 @@ const fmtPhone = p => { const d = digits(p); return d.length === 12 ? `+${d.slic
 function updArzBadge() { const n = S.arizalar.filter(a => a.status === "yangi").length, e = $("#arzCnt"); e.textContent = n; e.classList.toggle("hidden", !n); }
 function arzCard(x) {
   const [stL, stC] = ARZ_ST[x.status] || [x.status || "—", "grey"], d = x.device || {}, tel = digits(x.client?.phone);
-  const pay = !x.ourModel ? "Telefonini sotmoqchi" : x.diffUzs <= 0 ? `Mijozga qaytariladi: ${uzs(-x.diffUzs)}` : x.payType === "nasiya" ? `Nasiya: ${uzs(x.monthlyUzs)} × ${x.months} oy` : `Naqd qo'shib to'laydi: ${uzs(x.diffUzs)}`;
+  const pay = isBuyAriza(x) ? (x.payType === "nasiya" ? `Muddatli: ${uzs(x.monthlyUzs)} × ${x.months} oy` : `Naqd: ${uzs(x.ourUzs)}`) : !x.ourModel ? "Telefonini sotmoqchi" : x.diffUzs <= 0 ? `Mijozga qaytariladi: ${uzs(-x.diffUzs)}` : x.payType === "nasiya" ? `Nasiya: ${uzs(x.monthlyUzs)} × ${x.months} oy` : `Naqd qo'shib to'laydi: ${uzs(x.diffUzs)}`;
   return `<div class="item" style="display:block${x.status === "yangi" ? ";border-left:5px solid var(--y)" : ""}"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
-    <div><span class="badge ${stC}">${esc(stL)}</span>${!x.ourModel ? ' <span class="badge bad">Sotish</span>' : ""} <b>${esc(x.client?.name)}</b></div><span class="src">№${esc(x.no || x.id.slice(0, 6).toUpperCase())} · ${fdt(x.createdAt)}</span></div>
+    <div><span class="badge ${stC}">${esc(stL)}</span>${!x.ourModel ? ' <span class="badge bad">Sotish</span>' : ""}${isBuyAriza(x) ? ' <span class="badge">Muddatli xarid</span>' : ""} <b>${esc(x.client?.name)}</b></div><span class="src">№${esc(x.no || x.id.slice(0, 6).toUpperCase())} · ${fdt(x.createdAt)}</span></div>
     <div style="margin-top:6px"><a href="tel:+${esc(tel)}" style="font-weight:700;color:var(--g);font-size:17px">${esc(fmtPhone(tel))}</a></div>
-    <div class="src" style="margin-top:6px">Topshiradi: <b>${esc(d.name)} ${esc(d.mem)}</b>${d.color ? ", " + esc(d.color) : ""}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""} — taxminan ${x.manualUzs ? `<s>${uzs(x.deviceUzs)}</s> <b>${uzs(x.manualUzs)}</b> (admin: ${esc(x.manualReason || "")})` : uzs(x.deviceUzs)}${d.askUzs ? ` · <b>mijoz narxi: ${uzs(d.askUzs)}</b>` : ""}</div>
+    ${isBuyAriza(x) ? "" : `<div class="src" style="margin-top:6px">Topshiradi: <b>${esc(d.name)} ${esc(d.mem)}</b>${d.color ? ", " + esc(d.color) : ""}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""} — taxminan ${x.manualUzs ? `<s>${uzs(x.deviceUzs)}</s> <b>${uzs(x.manualUzs)}</b> (admin: ${esc(x.manualReason || "")})` : uzs(x.deviceUzs)}${d.askUzs ? ` · <b>mijoz narxi: ${uzs(d.askUzs)}</b>` : ""}</div>`}
     <div class="src">Olmoqchi: <b>${x.ourModel ? esc(x.ourModel) + " (" + uzs(x.ourUzs) + ")" : "tanlamagan"}</b> · ${esc(pay)}</div>
     ${x.note ? `<div class="note" style="margin:8px 0 0">Izoh: ${esc(x.note)}</div>` : ""}${buyInfoHtml(x)}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
       ${buyButtonsHtml(x)}
-      ${["yakunlandi", "bekor"].includes(x.status) || (isSellAriza(x) && ["olindi", "sotuvda"].includes(x.status)) ? "" : `<button class="btn ${isSellAriza(x) ? "sec" : "pri"} sm" data-arzgo="${x.id}">Trade-in'ni boshlash</button>`}
+      ${isBuyAriza(x) || ["yakunlandi", "bekor"].includes(x.status) || (isSellAriza(x) && ["olindi", "sotuvda"].includes(x.status)) ? "" : `<button class="btn ${isSellAriza(x) ? "sec" : "pri"} sm" data-arzgo="${x.id}">Trade-in'ni boshlash</button>`}
       ${x.status === "yangi" ? `<button class="btn sec sm" data-arz="${x.id}|aloqa">Bog'lanildi</button>` : ""}
       ${["olindi", "sotuvda"].includes(x.status) ? "" : x.status !== "bekor" && x.status !== "yakunlandi" ? `<button class="btn sec sm" style="color:var(--bad)" data-arz="${x.id}|bekor">Bekor qilish</button>` : `<button class="btn sec sm" data-arz="${x.id}|aloqa">Qayta ochish</button>`}
     </div></div>`;
@@ -974,6 +974,8 @@ function guideSvg(i) {
   return `<svg class="guide" viewBox="0 0 120 140" aria-hidden="true">${parts[i]}</svg>`;
 }
 const isSellAriza = x => !x.ourModel;
+// Mijoz faqat bizdan B/U telefon olmoqchi (o'z telefonini topshirmaydi) — muddatli to'lov
+const isBuyAriza = x => !!x.ourModel && !x.device?.name;
 function buyInfoHtml(x) {
   const b = x.bought, l = x.listed;
   if (!b) return "";
@@ -984,7 +986,7 @@ function buyInfoHtml(x) {
 }
 function buyButtonsHtml(x) {
   // Sotish murojaatida ham, almashtirish (trade-in) arizasida ham mijoz telefoni sotib olinadi
-  if (x.status === "bekor" || x.status === "yakunlandi") return "";
+  if (isBuyAriza(x) || x.status === "bekor" || x.status === "yakunlandi") return "";
   if (!x.bought) return `<button class="btn green sm" style="flex:none" data-buy="${x.id}">✓ ${isSellAriza(x) ? "Sotib olindi" : "Mijoz telefoni sotib olindi"}</button>`;
   // Almashtirishda: mijoz telefoni olingach — bizning telefon sotiladi (shartnoma shu yerda tuziladi)
   if (!isSellAriza(x)) return x.dealId ? "" : `<button class="btn green sm" style="flex:none" data-sold="${x.id}">✓ Bizning telefon sotildi</button>`;

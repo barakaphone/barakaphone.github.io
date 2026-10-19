@@ -315,7 +315,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.19-14";
+const APP_VERSION = "2026.10.19-15";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -520,6 +520,9 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
+  "Qanday xarid qilasiz?": "Как хотите купить?", "Muddatli to'lovga olish": "Купить в рассрочку", "Oyma-oy bo'lib to'laysiz": "Оплата частями помесячно",
+  "Trade-in: eski telefonimni topshirib olish": "Trade-in: сдать старый телефон", "Telefoningiz narxi ayirib tashlanadi": "Стоимость вашего телефона вычитается",
+  "Muddatli to'lov": "Рассрочка", "Telefon narxi": "Цена телефона", "Narxlar yangilandi. Yangi hisobni ko'rib, arizani qayta yuboring": "Цены обновились. Проверьте расчёт и отправьте заявку снова",
   "Telefoningizni baholang": "Оцените свой телефон",
   "Yuklanmoqda…": "Загрузка…",
   "Eski iPhone'ingizni yangisiga almashtiring": "Обменяйте старый iPhone на новый",
@@ -641,7 +644,7 @@ const QS = [
 ];
 const SUMMARY = QS.length;
 // started — mijoz vitrinadan o'tdi; pre — telefon boshida tanlangan; sell — faqat sotish uchun murojaat
-function freshW() { return {started: false, pre: false, sell: false, step: 0, q: 0, hist: [], modelId: null, mem: null, color: "", screen: null, body: null, batt: 100, cyc: null, bio: null, repair: null, box: null, mq: "", stockId: null, q2: "", months: 6, name: "", phone: "", note: "", done: null, saving: false}; }
+function freshW() { return {started: false, pre: false, sell: false, buy: false, pick: false, step: 0, q: 0, hist: [], modelId: null, mem: null, color: "", screen: null, body: null, batt: 100, cyc: null, bio: null, repair: null, box: null, mq: "", stockId: null, q2: "", months: 6, name: "", phone: "", note: "", done: null, saving: false}; }
 let W = freshW();
 const curModel = () => S.models.find(m => m.id === W.modelId);
 const GENERIC_COLORS = ["Qora", "Oq", "Kumush", "Kulrang", "Oltin", "Ko'k", "Yashil", "Binafsha", "Pushti", "Qizil"];
@@ -652,7 +655,7 @@ const colorsOf = m => (m?.colors || []).length ? m.colors : appleColorsOf(m).len
 const answers = () => ({power: "yes", lock: "off", screen: W.screen, body: W.body, batt: W.batt, cyc: hasCycles(curModel()) ? W.cyc : null, bio: W.bio, cam: "ok", repair: W.repair, box: W.box});
 const clientCalc = () => { const m = curModel(); return m && W.mem ? calcTradein(m, W.mem, answers(), S.settings) : null; };
 const ourStock = () => W.sell ? null : S.stock.find(s => s.id === W.stockId);
-const diffUzs = () => { const s = ourStock(), c = clientCalc(); return s && c ? toUzs(s.sellUsd) - c.uzs : 0; };
+const diffUzs = () => { const s = ourStock(), c = clientCalc(); if (W.buy) return s ? toUzs(s.sellUsd) : 0; return s && c ? toUzs(s.sellUsd) - c.uzs : 0; };
 const needPlan = () => !!ourStock() && diffUzs() > 0;
 const fmt9 = v => { const d = digits(v).slice(0, 9); if (d.length <= 2) return d ? "(" + d : ""; let o = `(${d.slice(0, 2)}) ${d.slice(2, 5)}`; if (d.length > 5) o += "-" + d.slice(5, 7); if (d.length > 7) o += "-" + d.slice(7, 9); return o; };
 const phoneOk = () => W.phone.length === 9;
@@ -685,7 +688,7 @@ function canNext() {
   if (W.step === 3) return !W.saving;
   return true;
 }
-const stepList = () => W.sell ? [0, 3] : W.pre ? [0, 2, 3] : [0, 1, 2, 3];
+const stepList = () => W.buy ? [2, 3] : W.sell ? [0, 3] : W.pre ? [0, 2, 3] : [0, 1, 2, 3];
 const nextStep = s => { const l = stepList(); return l[l.indexOf(s) + 1]; };
 const prevStep = s => { const l = stepList(); return l[l.indexOf(s) - 1]; };
 const stepName = s => t(W.sell && s === 3 ? "Murojaat" : STEPS[s]);
@@ -723,6 +726,7 @@ function renderWizard() {
   applyStatic();
   if (W.done) return renderDone();
   if (!W.started) return renderHome();
+  if (W.pick) return renderPick();
   const el = $("#page"), l = stepList();
   let h = `<div class="stepper">${l.map((s, i) => `<div class="st ${s === W.step ? "on" : ""} ${s < W.step ? "done" : ""}"><div class="c">${s < W.step ? "✓" : i + 1}</div>${stepName(s)}</div>`).join("")}</div>`;
   if (W.pre && W.step === 0 && ourStock()) { const s = ourStock(); h += `<div class="chosen"><span class="pimg">${imgOf(s)}</span><div><small>${t("Siz tanlagan telefon")}</small><b>${esc(s.modelName)} ${esc(s.mem || "")}</b><span>${uzs(toUzs(s.sellUsd))}</span></div><button class="qback" data-act="home">${t("O'zgartirish")}</button></div>`; }
@@ -734,6 +738,16 @@ function renderWizard() {
   if (W.step === 0 && QS[W.q]?.k === "model") renderModelList();
   if (W.step === 1) { renderStockGrid(); renderCompare(); }
   renderAction();
+}
+// Vitrinadan telefon tanlanganda: muddatli to'lovga olish yoki trade-in
+function renderPick() {
+  const s = ourStock(); if (!s) { W = freshW(); return renderHome(); }
+  $("#page").innerHTML = `<button class="qback" data-act="home">${t("← Orqaga")}</button>
+  <div class="chosen"><span class="pimg">${imgOf(s)}</span><div><small>${t("Siz tanlagan telefon")}</small><b>${esc(s.modelName)} ${esc(s.mem || "")}</b><span>${uzs(toUzs(s.sellUsd))}</span></div></div>
+  <h2 class="qt">${t("Qanday xarid qilasiz?")}</h2>
+  <div class="olist"><button class="opt" data-act="pickBuy"><b>${t("Muddatli to'lovga olish")}</b><br><small>${t("Oyma-oy bo'lib to'laysiz")}</small></button>
+  <button class="opt" data-act="pickTrade"><b>${t("Trade-in: eski telefonimni topshirib olish")}</b><br><small>${t("Telefoningiz narxi ayirib tashlanadi")}</small></button></div>`;
+  $("#actionBar").classList.add("hidden");
 }
 function questionHtml() {
   const Q = QS[W.q], m = curModel();
@@ -776,6 +790,12 @@ function renderCompare() {
 }
 function payHtml() {
   const c = clientCalc(), s = ourStock(), diff = diffUzs();
+  if (W.buy) {
+    if (W.months > maxM()) W.months = maxM();
+    return `<button class="qback" data-act="prev">${t("← Orqaga")}</button>` + hero("₪", t("Muddatli to'lov"), `${esc(s.modelName)} ${esc(s.mem || "")}`) +
+      `<div class="price" style="margin-top:0"><div class="price-top"><div class="ic">$</div><div><small>${t("Telefon narxi")}</small><b>${esc(s.modelName)} ${esc(s.mem || "")}</b></div></div><div class="total"><span>${t("Jami:")}</span><b>${sum(diff)}</b></div></div>
+      <h3>${t("Bo'lib to'lash muddati")}</h3>${slider("mRange", W.months)}<div id="planBox">${planHtml(diff)}</div>`;
+  }
   let h = `<button class="qback" data-act="prev">${t("← Orqaga")}</button>` + hero("₪", t("To'lov"), `${esc(s.modelName)} ${esc(s.mem || "")}`) +
     `<div class="compare" style="margin:0 0 16px"><div class="box"><div class="k">${t("Yangi telefon")}</div><div class="v">${uzs(toUzs(s.sellUsd))}</div></div><div class="op">−</div><div class="box"><div class="k">${t("Sizning telefoningiz")}</div><div class="v">${uzs(c.uzs)}</div></div></div>`;
   if (diff <= 0) return h + `<div class="price" style="margin-top:0"><div class="price-top"><div class="ic">$</div><div><small>${t("Telefoningiz qimmatroq")}</small><b>${t("Sizga qaytariladi")}</b></div></div><div class="total"><span>${t("Jami:")}</span><b>${sum(-diff)}</b></div></div><p class="hint">${t("Bu holatda qo'shimcha to'lov kerak emas.")}</p>`;
@@ -791,7 +811,13 @@ function planHtml(diff) {
 }
 function formHtml() {
   const s = ourStock(), c = clientCalc(), diff = diffUzs(), p = needPlan() ? plan(diff, W.months) : null;
-  const top = W.sell
+  const top = W.buy
+    ? hero("✓", t("Ariza qoldiring"), t("Sotuvchimiz qo'ng'iroq qilib, tafsilotlarni kelishib oladi")) + `
+  <div class="kv" style="margin-top:0">
+    <div><div class="k">${t("Siz olasiz")}</div><div class="v" style="font-size:16px">${esc(s.modelName)} ${esc(s.mem || "")}</div><div class="k">${uzs(toUzs(s.sellUsd))}</div></div>
+    <div class="big"><div class="k">${t("Oylik to'lov, {n} oy", {n: W.months})}</div><div class="v">${uzs(p.monthly)}</div></div>
+  </div>`
+    : W.sell
     ? hero("$", t("Telefoningizni sotish"), t("Ismingiz va raqamingizni qoldiring — adminlarimiz siz bilan bog'lanadi")) +
       `<div class="kv" style="margin-top:0"><div><div class="k">${t("Siz topshirasiz")}</div><div class="v" style="font-size:16px">${esc(curModel().name)} ${esc(W.mem)}</div></div><div><div class="k">${t("Taxminiy baho")}</div><div class="v" style="font-size:16px">${uzs(c.uzs)}</div></div></div>${warnHtml()}`
     : hero("✓", t("Ariza qoldiring"), t("Sotuvchimiz qo'ng'iroq qilib, tafsilotlarni kelishib oladi")) + `
@@ -824,10 +850,10 @@ function renderDone() {
   const d = W.done;
   $("#page").innerHTML = `<div style="text-align:center;padding:20px 0"><div class="done-ic">✓</div><h2 style="color:var(--g);margin:0">${t(d.sell ? "Murojaatingiz qabul qilindi" : "Arizangiz qabul qilindi")}</h2>
   <p class="hint" style="font-size:17px">${t("Ariza raqami:")} <b>№${esc(d.no)}</b></p><p class="hint" style="font-size:16px">${d.sell ? `<b>${t("Siz bilan adminlarimiz bog'lanishadi.")}</b>` : esc(t("Sotuvchimiz tez orada {p} raqamiga qo'ng'iroq qiladi.", {p: d.phone}))}</p></div>
-  <div class="kv"><div><div class="k">${t("Siz topshirasiz")}</div><div class="v" style="font-size:16px">${esc(d.gave)}</div></div><div><div class="k">${t(d.sell ? "Taxminiy baho" : "Siz olasiz")}</div><div class="v" style="font-size:16px">${d.sell ? uzs(d.bigValue) : esc(d.took)}</div></div>
+  <div class="kv">${d.buy ? "" : `<div><div class="k">${t("Siz topshirasiz")}</div><div class="v" style="font-size:16px">${esc(d.gave)}</div></div>`}<div><div class="k">${t(d.sell ? "Taxminiy baho" : "Siz olasiz")}</div><div class="v" style="font-size:16px">${d.sell ? uzs(d.bigValue) : esc(d.took)}</div></div>
   ${d.sell ? "" : `<div class="big"><div class="k">${esc(d.bigLabel)}</div><div class="v">${uzs(d.bigValue)}</div></div>`}</div>
-  <div class="note memo"><ul>${["iCloud login va parolingizni bilishingiz shart.", "\"Telefonni topish\" (Find My iPhone) funksiyasi o'chirilgan bo'lishi kerak.", "Telefonning qutisi va hujjatlari bo'lsa, o'zingiz bilan olib keling.", "Pasportingizni ham unutmang."].map(x => `<li>${esc(t(x))}</li>`).join("")}</ul>
-  <p>💰 <b>${esc(t("Yakuniy narx telefonning holati va to'liq tekshiruvdan o'tkazilgandan so'ng aniqlanadi."))}</b></p></div>
+  <div class="note memo"><ul>${(d.buy ? ["Pasportingizni ham unutmang."] : ["iCloud login va parolingizni bilishingiz shart.", "\"Telefonni topish\" (Find My iPhone) funksiyasi o'chirilgan bo'lishi kerak.", "Telefonning qutisi va hujjatlari bo'lsa, o'zingiz bilan olib keling.", "Pasportingizni ham unutmang."]).map(x => `<li>${esc(t(x))}</li>`).join("")}</ul>
+  ${d.buy ? "" : `<p>💰 <b>${esc(t("Yakuniy narx telefonning holati va to'liq tekshiruvdan o'tkazilgandan so'ng aniqlanadi."))}</b></p>`}</div>
   <button class="btn sec block" style="margin-top:20px" data-act="new">${t("Bosh sahifaga qaytish")}</button>`;
   $("#actionBar").classList.add("hidden");
 }
@@ -842,6 +868,7 @@ async function saveAriza() {
   if (W.name.length < 2) return fail(t("Ismingizni yozing"));
   if (!phoneOk()) { $("#fPhone")?.classList.add("err"); return fail(t("Telefon raqamini to'liq yozing: kod va 7 ta raqam")); }
   const c = clientCalc(), m = curModel(), st = ourStock();
+  if (W.buy) return saveBuy(st);
   if (!c) return;
   W.saving = true; renderAction();
   try {
@@ -869,6 +896,23 @@ async function saveAriza() {
     W.saving = false; renderWizard(); window.scrollTo(0, 0);
   } catch (e) { W.saving = false; renderAction(); fail(errText(e)); }
 }
+// Muddatli xarid: mijoz telefon topshirmaydi, butun narx bo'lib to'lanadi (foizlar trade-in bilan bir xil)
+async function saveBuy(st) {
+  if (!st) return;
+  W.saving = true; renderAction();
+  try {
+    const fresh = (await getDoc(doc(db, "settings", "main"))).data();
+    if (stable(fresh) !== stable(S.settings)) { S.settings = fresh; W.saving = false; renderWizard(); return toast(t("Narxlar yangilandi. Yangi hisobni ko'rib, arizani qayta yuboring"), true); }
+    const price = toUzs(st.sellUsd), p = plan(price, W.months);
+    const ref = doc(collection(db, "arizalar")), no = ref.id.slice(0, 6).toUpperCase(), phone = "998" + W.phone;
+    await setDoc(ref, {status: "yangi", no, branchId: st.branchId || "", client: {name: W.name.slice(0, 60), phone}, note: "",
+      device: {}, deviceUzs: 0, stockId: st.id, ourModel: `${st.modelName} ${st.mem || ""}`.trim(), ourUzs: price,
+      diffUzs: price, payType: "nasiya", months: W.months, monthlyUzs: p.monthly, totalUzs: p.total, kurs: S.settings.kurs, createdAt: serverTimestamp()});
+    try { window.fbq && window.fbq("track", "Lead"); } catch {}
+    W.done = {no, buy: true, phone: fmtPhone(phone), took: `${st.modelName} ${st.mem || ""}`.trim(), bigLabel: t("Oylik to'lov, {n} oy", {n: W.months}), bigValue: p.monthly};
+    W.saving = false; renderWizard(); window.scrollTo(0, 0);
+  } catch (e) { W.saving = false; renderAction(); const err = $("#saveErr"); err.textContent = errText(e); err.classList.remove("hidden"); }
+}
 const stable = v => Array.isArray(v) ? "[" + v.map(stable).join(",") + "]" : v && typeof v === "object" ? "{" + Object.keys(v).sort().map(k => JSON.stringify(k) + ":" + stable(v[k])).join(",") + "}" : JSON.stringify(v);
 
 /* ================= EVENTS ================= */
@@ -881,7 +925,9 @@ document.addEventListener("click", e => {
   if (a === "start") { Object.assign(W, {started: true, pre: false, sell: false, stockId: null, step: 0}); renderWizard(); return goTop(); }
   // Faqat sotish: baholash → murojaat (telefon tanlanmaydi)
   if (a === "startSell") { Object.assign(W, {started: true, pre: false, sell: true, stockId: null, step: 0}); renderWizard(); return goTop(); }
-  if (a === "home") { Object.assign(W, {started: false, pre: false, sell: false, stockId: null, step: 0}); renderWizard(); return goTop(); }
+  if (a === "pickBuy") { Object.assign(W, {pick: false, buy: true, pre: false, step: 2}); renderWizard(); return goTop(); }
+  if (a === "pickTrade") { Object.assign(W, {pick: false, buy: false, pre: true, step: 0}); renderWizard(); return goTop(); }
+  if (a === "home") { Object.assign(W, {started: false, pre: false, sell: false, buy: false, pick: false, stockId: null, step: 0}); renderWizard(); return goTop(); }
   if (a === "qback") { if (W.hist.length) { W.q = W.hist.pop(); renderWizard(); goTop(); } return; }
   if (a === "redo") { W.hist = []; W.q = 0; return renderWizard(); }
   if (a === "colorOk") { const v = $("#colorTxt").value.trim(); if (!v) return toast(t("Rangni yozing yoki ro'yxatdan tanlang")); return answer("color", v); }
@@ -889,12 +935,13 @@ document.addEventListener("click", e => {
   if (a === "battOk") { W.batt = Math.max(1, Math.min(100, Math.round(+$("#battN").value || 0))); return answer("batt", W.batt); }
   if (a === "cycSkip") return answer("cyc", null);
   if (a === "cycOk") { const v = $("#cycN").value; if (v === "") return toast(t("Sikl sonini kiriting")); return answer("cyc", Math.max(0, Math.round(+v))); }
+  if (a === "prev" && W.buy && W.step === 2) { Object.assign(W, {buy: false, pick: true}); renderWizard(); return goTop(); }
   if (a === "prev") { W.step = prevStep(W.step); renderWizard(); return goTop(); }
   if (a === "next" && canNext()) { if (W.step === 3) return saveAriza(); W.step = nextStep(W.step); renderWizard(); return goTop(); }
   if (a === "new") { W = freshW(); renderWizard(); return goTop(); }
   if (b.dataset.stock) {
-    // Vitrinada tanlansa — darhol baholashga o'tadi va keyin tanlash qadami chiqmaydi
-    if (!W.started) { Object.assign(W, {started: true, pre: true, sell: false, stockId: b.dataset.stock, step: 0}); renderWizard(); return goTop(); }
+    // Vitrinada tanlansa — avval "Muddatli to'lov yoki Trade-in" tanlovi chiqadi
+    if (!W.started) { Object.assign(W, {started: true, pick: true, pre: false, sell: false, buy: false, stockId: b.dataset.stock, step: 0}); renderWizard(); return goTop(); }
     W.stockId = b.dataset.stock === W.stockId ? null : b.dataset.stock; renderStockGrid(); renderCompare(); return refreshNext();
   }
 });
