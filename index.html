@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.17-4"></script>
+<script src="shartnoma.js?v=2026.10.19-5"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.19-2";
+const APP_VERSION = "2026.10.19-5";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -617,7 +617,7 @@ function renderStock() {
   </div>
   <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
     <div class="chips">${[["sotuvda","Sotuvda"],["tayyorlanmoqda","Tayyorlanmoqda"],["sotilgan","Sotilgan"],["all","Hammasi"]].map(([k, l]) => `<button class="chip ${S.stockFilter === k ? "on" : ""}" data-sf="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" id="addModelSt">+ Model qo'shish</button><button class="btn gold" id="addStock">+ Telefon qo'shish</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" id="tagAll" title="Ro'yxatdagi sotilmagan telefonlar uchun">🏷 Barchasiga sennik</button><button class="btn sec" id="addModelSt">+ Model qo'shish</button><button class="btn gold" id="addStock">+ Telefon qo'shish</button></div>
   </div>
   ${items.length ? `<div class="tw"><table><thead><tr><th>Telefon</th><th>Filial</th><th class="n">Tannarx, $</th><th class="n">Sotish narxi, $</th><th class="n">Foyda</th><th>Holat</th><th></th></tr></thead><tbody>
   ${items.map(s => {
@@ -633,7 +633,7 @@ function renderStock() {
     <td class="n">${sold ? usd(s.sellUsd) : `<input class="inp sm" type="number" step="1" data-sell="${s.id}" value="${s.sellUsd}">`}<div class="src">${uzs(toUzs(s.sellUsd))}</div></td>
     <td class="n"><b style="color:${pr >= 0 ? "var(--ok)" : "var(--bad)"}">${uzs(pr)}</b></td>
     <td>${sold ? `<span class="badge grey">Sotilgan</span>` : `<select class="inp" style="min-height:36px;padding:6px 8px;min-width:140px" data-status="${s.id}">${["sotuvda", "tayyorlanmoqda"].map(k => `<option value="${k}" ${s.status === k ? "selected" : ""}>${ST_LABEL[k]}</option>`).join("")}</select>`}</td>
-    <td style="white-space:nowrap">${sold ? (isOwner() ? `<button class="btn bad sm" data-delsold="${s.id}">O'chirish</button>` : "") : `<button class="btn sec sm" data-sedit="${s.id}">Tahrirlash</button> <button class="btn sec sm" data-move="${s.id}">Ko'chirish</button> <button class="btn bad sm" data-delstock="${s.id}">O'chirish</button>`}</td></tr>`}).join("")}
+    <td style="white-space:nowrap">${sold ? (isOwner() ? `<button class="btn bad sm" data-delsold="${s.id}">O'chirish</button>` : "") : `<button class="btn gold sm" data-tag="${s.id}">🏷 Sennik</button> <button class="btn sec sm" data-sedit="${s.id}">Tahrirlash</button> <button class="btn sec sm" data-move="${s.id}">Ko'chirish</button> <button class="btn bad sm" data-delstock="${s.id}">O'chirish</button>`}</td></tr>`}).join("")}
   </tbody></table></div>` : `<div class="panel empty">Bu bo'limda telefon yo'q.</div>`}`;
   document.querySelectorAll("[data-sf]").forEach(b => b.onclick = () => { S.stockFilter = b.dataset.sf; renderStock(); });
   $("#addStock").onclick = stockModal;
@@ -650,6 +650,8 @@ function renderStock() {
   });
   document.querySelectorAll("[data-move]").forEach(b => b.onclick = () => moveModal(stockById(b.dataset.move)));
   document.querySelectorAll("[data-sedit]").forEach(b => b.onclick = () => stockEditModal(stockById(b.dataset.sedit)));
+  document.querySelectorAll("[data-tag]").forEach(b => b.onclick = () => printTags([stockById(b.dataset.tag)]));
+  $("#tagAll").onclick = () => { const list = [...document.querySelectorAll("[data-tag]")].map(b => stockById(b.dataset.tag)); list.length ? printTags(list) : toast("Ro'yxatda sotilmagan telefon yo'q", true); };
   document.querySelectorAll("[data-delsold]").forEach(b => b.onclick = async () => {
     if (!isOwner()) return;
     const st = stockById(b.dataset.delsold), linked = st.sold?.ref && (S.deals.some(d => d.id === st.sold.ref) || S.sales.some(x => x.id === st.sold.ref));
@@ -693,6 +695,12 @@ const IN_RANGE = m => m.custom === true || (m.brand === "Apple" && (n => n >= 13
 const STOCK_MODEL = IN_RANGE;
 const COND = {yangi: "Yangi", bu: "B/U"};
 const condSel = (id, cur = "bu") => `<select class="inp" id="${id}">${Object.entries(COND).map(([k, l]) => `<option value="${k}" ${k === cur ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+/* Sennik: ombordagi telefon ma'lumotlari bilan Xprinter'ga chop etish (o'lcham — Sozlamalarda) */
+function printTags(list) {
+  const items = list.filter(Boolean).map(s => ({model: s.modelName, mem: s.mem, batt: s.battery ? s.battery + "%" : "", region: s.region || "", price: s.sellUsd ? sum(toUzs(s.sellUsd)) + " so'm" : ""}));
+  const w = window.open("", "_blank"); if (!w) return toast("Brauzer yangi oyna ochishga ruxsat bermadi", true);
+  w.document.open(); w.document.write(Shartnoma.tagHtml(items, S.settings.tag, document.querySelector(".side img")?.src)); w.document.close();
+}
 function stockEditModal(s) {
   modal(`<h2>Telefon ma'lumotlari</h2><p class="sub">${esc(s.modelName)} ${esc(s.mem || "")}. Bu ma'lumotlar mijoz sahifasidagi kartochkada ko'rinadi.</p>
   <div class="field"><label>Holati</label>${condSel("eCond", s.cond || "bu")}</div>
@@ -700,13 +708,14 @@ function stockEditModal(s) {
     <div class="field"><label>Daraja</label><select class="inp" id="eGrade">${["A", "B", "C", "D"].map(g => `<option ${s.grade === g ? "selected" : ""}>${g}</option>`).join("")}</select></div></div>
   <div class="row"><div class="field"><label>Batareya, %</label><input class="inp" id="eBatt" type="number" min="1" max="100" value="${s.battery ?? ""}"></div>
     <div class="field"><label>Batareya sikli</label><input class="inp" id="eCyc" type="number" min="0" value="${s.cyc ?? ""}"></div>
+    <div class="field"><label>Region</label><input class="inp" id="eRegion" placeholder="LL/A" value="${esc(s.region || "")}" style="text-transform:uppercase"></div>
     <div class="field"><label>Qutisi</label><select class="inp" id="eBox"><option value="">—</option><option value="yes" ${s.box === "yes" ? "selected" : ""}>Bor</option><option value="no" ${s.box === "no" ? "selected" : ""}>Yo'q</option></select></div></div>
   <div class="acts"><button class="btn sec" id="eNo">Bekor qilish</button><button class="btn pri" id="eOk">Saqlash</button></div>`);
   bindPicker("eColor");
   $("#eNo").onclick = closeModal;
   $("#eOk").onclick = async () => {
     const data = {cond: $("#eCond").value, color: pickedColor("eColor"), grade: $("#eGrade").value, battery: +$("#eBatt").value || null,
-      cyc: $("#eCyc").value === "" ? null : Math.max(0, Math.round(+$("#eCyc").value)), box: $("#eBox").value};
+      cyc: $("#eCyc").value === "" ? null : Math.max(0, Math.round(+$("#eCyc").value)), box: $("#eBox").value, region: $("#eRegion").value.trim().toUpperCase()};
     try { await updateDoc(doc(db, "stock", s.id), {...data, updatedAt: serverTimestamp()}); Object.assign(s, data); closeModal(); renderStock(); syncCatalog(); toast("Saqlandi"); }
     catch (e) { toast(errText(e), true); }
   };
@@ -737,7 +746,8 @@ function stockModal() {
   <div class="row"><div class="field"><label>Daraja</label><select class="inp" id="nGrade"><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
     <div class="field"><label>Batareya, %</label><input class="inp" id="nBatt" type="number" min="1" max="100" value="100"></div></div>
   <div class="row"><div class="field"><label>Batareya sikli</label><input class="inp" id="nCyc" type="number" min="0" placeholder="bilmasangiz bo'sh qoldiring"></div>
-    <div class="field"><label>Qutisi</label><select class="inp" id="nBox"><option value="yes">Bor</option><option value="no">Yo'q</option></select></div></div>
+    <div class="field"><label>Qutisi</label><select class="inp" id="nBox"><option value="yes">Bor</option><option value="no">Yo'q</option></select></div>
+    <div class="field"><label>Region (sennik uchun)</label><input class="inp" id="nRegion" placeholder="masalan LL/A" style="text-transform:uppercase"></div></div>
   <div class="field hidden" id="nImeiBox"><label>IMEI</label><input class="inp" id="nImei" inputmode="numeric" maxlength="15"></div>
   <div class="row"><div class="field"><label>Tannarx, $</label><input class="inp" id="nBuy" type="number" min="0"></div>
     <div class="field"><label>Sotish narxi, $</label><input class="inp" id="nSell" type="number" min="0"></div></div>
@@ -756,7 +766,7 @@ function stockModal() {
     const warn = [buy > PRICE_LIMIT || sell > PRICE_LIMIT ? `narx ${usd(PRICE_LIMIT)} dan yuqori` : "", sell < buy ? "sotish narxi tannarxdan past" : "", sell > buy * 3 ? "sotish narxi tannarxdan 3 barobardan ko'p" : ""].filter(Boolean);
     if (warn.length && !$("#nSave").dataset.ok) { e.innerHTML = `Diqqat: ${warn.join(", ")}. Tannarx ${usd(buy)} (${uzs(toUzs(buy))}), sotish ${usd(sell)} (${uzs(toUzs(sell))}). To'g'ri bo'lsa, yana bir marta <b>Qo'shish</b> ni bosing.`; e.classList.remove("hidden"); $("#nSave").dataset.ok = "1"; return; }
     const data = {branchId: $("#nBranch").value, modelName: m.name, brand: m.brand, mem: $("#nMem").value, color: pickedColor("nColor"), cond: $("#nCond").value, imei: $("#nCond").value === "yangi" ? digits($("#nImei").value) : "",
-      grade: $("#nGrade").value, battery: +$("#nBatt").value || null, cyc: $("#nCyc").value === "" ? null : Math.max(0, Math.round(+$("#nCyc").value)), box: $("#nBox").value,
+      grade: $("#nGrade").value, battery: +$("#nBatt").value || null, cyc: $("#nCyc").value === "" ? null : Math.max(0, Math.round(+$("#nCyc").value)), box: $("#nBox").value, region: ($("#nRegion").value || "").trim().toUpperCase(),
       buyUsd: buy, sellUsd: sell, status: "sotuvda", source: "xarid",
       createdBy: S.me.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp()};
     try { const ref = doc(collection(db, "stock")); await setDoc(ref, data); S.stock.unshift({id: ref.id, ...data, createdAt: new Date()}); closeModal(); renderStock(); syncCatalog(); toast("Omborga qo'shildi"); }
@@ -1656,6 +1666,10 @@ function renderSettings() {
   <div class="panel"><h3 style="margin-top:0">Nuqsonlar</h3><div class="tw"><table><thead><tr><th>Savol</th><th>Javob</th><th>Narxdan chegirma, % (= ball)</th></tr></thead><tbody>
     ${Object.entries(s.pts).map(([k, arr]) => arr.map((o, i) => `<tr><td>${i === 0 ? PT_NAME[k] || k : ""}</td><td>${esc(o.label)}</td><td>${num(`pts.${k}.${i}.p`, o.p)}</td></tr>`).join("")).join("")}
   </tbody></table></div></div>
+  <div class="panel"><h3 style="margin-top:0">Sennik (Xprinter)</h3><p class="sub">Etiketka o'lchami, mm. Chop etilgan sennik etiketkaga sig'masa yoki siljisa — shu raqamlarni etiketkangiz o'lchamiga moslang.</p>
+    <div class="row"><div class="field"><label>Eni, mm</label><input class="inp" id="tgW" type="number" min="20" max="150" value="${esc(s.tag?.w || 58)}" style="max-width:140px"></div>
+    <div class="field"><label>Bo'yi, mm</label><input class="inp" id="tgH" type="number" min="15" max="150" value="${esc(s.tag?.h || 40)}" style="max-width:140px"></div>
+    <div class="field" style="align-self:end"><button class="btn sec" id="tgTest">🏷 Sinov sennik</button></div></div></div>
   <div class="panel"><h3 style="margin-top:0">Shartnoma shartlari</h3><p class="sub">Har bir sotib olish shartnomasiga avtomatik yoziladi. Bo'sh qoldirilsa, shartnomada "______" chiziq chiqadi (qo'lda yoziladi).</p>
     <div class="row"><div class="field"><label>Shartnoma amal qilish muddati, oy</label><input class="inp" id="ctMonths" inputmode="numeric" value="${esc(s.contract?.months || "")}" style="max-width:160px"></div>
     <div class="field"><label>Qo'shimcha shartlar</label><input class="inp" id="ctExtra" value="${esc(s.contract?.extra || "")}" placeholder="masalan: yo'q"></div></div></div>
@@ -1671,11 +1685,14 @@ function renderSettings() {
   </div>`;
   const setPath = (obj, path, v) => { const ks = path.split("."); let o = obj; ks.slice(0, -1).forEach(k => o = o[k]); o[ks[ks.length - 1]] = v; };
   document.querySelectorAll("[data-set]").forEach(inp => inp.oninput = () => setPath(s, inp.dataset.set, +inp.value));
+  $("#tgTest").onclick = () => { const w = window.open("", "_blank"); if (!w) return toast("Brauzer yangi oyna ochishga ruxsat bermadi", true);
+    w.document.open(); w.document.write(Shartnoma.tagHtml([{model: "iPhone 15 Pro Max", mem: "256 GB", batt: "88%", region: "LL/A", price: "9 290 000 so'm"}], {w: +$("#tgW").value, h: +$("#tgH").value}, document.querySelector(".side img")?.src)); w.document.close(); };
   $("#saveSettings").onclick = async () => {
     for (let i = 1; i < s.grades.length - 1; i++) if (s.grades[i].max <= s.grades[i - 1].max) return toast("Daraja chegaralari o'sib borishi kerak", true);
     for (let i = 1; i < s.tiers.length; i++) if (s.tiers[i].to <= s.tiers[i - 1].to) return toast("Nasiya oraliqlari o'sib borishi kerak", true);
     if (!(s.kurs > 0)) return toast("Kursni kiriting", true);
     s.contract = {months: $("#ctMonths").value.trim(), extra: $("#ctExtra").value.trim()};
+    s.tag = {w: +$("#tgW").value || 58, h: +$("#tgH").value || 40};
     try { await setDoc(doc(db, "settings", "main"), s); S.settings = s; toast("Sozlamalar saqlandi"); renderSettings(); } catch (e) { toast(errText(e), true); }
   };
   const rows = () => {

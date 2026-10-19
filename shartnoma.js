@@ -120,5 +120,42 @@ ${pay}
   };
   const REQ_FIELDS = [["firm", "Firma nomi"], ["addr", "Manzil"], ["place", "Shartnoma tuzilgan joy"], ["account", "Hisob raqami"], ["bank", "Bank"], ["mfo", "MFO"], ["stir", "STIR"], ["phone", "Telefon"], ["director", "Rahbar F.I.O."]];
 
-  window.Shartnoma = {buyHtml, sellHtml, open, words, backCoverUsd, REQ_PRESETS, REQ_FIELDS};
+  /* ---------- SENNIK (narx yorlig'i) — Xprinter kabi termoprinter uchun ----------
+     O'lcham Sozlamalarda (mm). Hamma o'lchamlar etiketka balandligiga qarab moslashadi. */
+  function tagHtml(items, size, logo) {
+    const w = +size?.w || 58, h = +size?.h || 40, k = h / 40, mm = x => (x * k).toFixed(2) + "mm";
+    const fit = (t, base, max) => { const n = String(t || "").length; return mm(n > max ? base * max / n : base); };
+    const one = t => `<div class="tag">
+  <div class="top">${[["Model:", t.model, 15], ["Xotira:", t.mem, 9], ["Yomkost:", t.batt, 7]].map(([l, x, mx]) => `<div><i>${l}</i><b style="font-size:${fit(x, 3.1, mx)}">${v(x)}</b></div>`).join("")}</div>
+  <div class="mid"><div class="side"><b style="font-size:${fit(t.region, 3, 8)}">${v(t.region)}</b><i>Region:</i></div>
+    <div class="logo">${LOGO}</div>
+    <div class="side"><b class="price" style="font-size:${fit(t.price, 3.6, 11)}">${v(t.price)}</b><i>Narx:</i></div></div>
+  <div class="foot"><span>${TG}${IG} @barakasavdorasmiy</span><span>${PH} 73 <b>249-29-29</b></span></div></div>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Sennik</title><style>
+@page{size:${w}mm ${h}mm;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}
+body{font-family:Arial,Helvetica,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.tag{width:${w}mm;height:${h}mm;padding:${mm(1.6)} ${mm(2)} ${mm(1)};display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page}
+.tag:last-child{page-break-after:auto;break-after:auto}
+i{font-style:italic;font-size:${mm(2.4)};color:#222}b{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.top{display:grid;grid-template-columns:1.45fr 1fr 1fr;gap:${mm(1.5)};text-align:center}
+.top div{display:flex;flex-direction:column;align-items:center;gap:${mm(0.6)}}.top b{display:block;width:100%;border-bottom:${mm(0.25)} solid #000;padding-bottom:${mm(0.3)};line-height:1.15}
+.mid{flex:1;display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:${mm(1.5)};padding-bottom:${mm(1)}}
+.side{display:flex;flex-direction:column;align-items:center;text-align:center;gap:${mm(0.6)}}.side b{display:block;width:100%;border-bottom:${mm(0.25)} solid #000;padding-bottom:${mm(0.3)};line-height:1.15}
+.logo{display:flex;align-items:center;justify-content:center;height:100%;padding-top:${mm(.5)}}.logo svg{width:100%;max-height:${mm(15)}}
+.foot{border-top:${mm(0.3)} solid #000;padding-top:${mm(0.8)};display:flex;justify-content:space-between;align-items:center;font-size:${mm(2.2)};white-space:nowrap}
+.foot span{display:flex;align-items:center;gap:${mm(0.6)}}.foot svg{width:${mm(2.6)};height:${mm(2.6)}}.foot b{font-size:${mm(2.6)}}
+@media screen{body{background:#ddd;padding:12px;display:flex;flex-wrap:wrap;gap:12px}.tag{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}}
+</style></head><body>${items.map(one).join("")}<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>`;
+  }
+  // Qora-oq logo (termoprinter uchun): belgi + BARAKA + Development
+  const LOGO = `<svg viewBox="0 0 220 150" aria-label="Baraka Development"><g transform="translate(66,0)">
+<path d="M14 6h52v4L2 74V20Q2 6 14 6z" fill="#000"/><path d="M88 0v70q0 6-6 6H8L88 0z" fill="#000"/>
+<path d="M24 76 50 50M40 76 66 50M56 76 82 50" stroke="#fff" stroke-width="0"/><rect x="30" y="44" width="5" height="34" fill="#fff"/><rect x="47" y="30" width="5" height="48" fill="#fff"/><rect x="64" y="16" width="5" height="62" fill="#fff"/></g>
+<text x="110" y="118" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="38" letter-spacing="2">BARAKA</text>
+<text x="110" y="142" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="17" letter-spacing=".5">Development</text></svg>`;
+  const TG = '<svg viewBox="0 0 24 24"><path d="M2 11.5 21 4l-3.2 16-6-4.6-3 2.8.4-4.6L17 7 7.6 13.2 2 11.5z" fill="#000"/></svg>';
+  const IG = '<svg viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="5" fill="#000"/><circle cx="12" cy="12" r="4.3" fill="none" stroke="#fff" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.2" fill="#fff"/></svg>';
+  const PH = '<svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" fill="#000"/></svg>';
+
+  window.Shartnoma = {buyHtml, sellHtml, open, words, backCoverUsd, tagHtml, REQ_PRESETS, REQ_FIELDS};
 })();
