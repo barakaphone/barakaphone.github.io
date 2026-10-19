@@ -131,7 +131,7 @@ ${pay}
   };
   const TAG_DESIGNS = {1: "Klassik", 2: "Katta narx", 3: "Chap logo", 4: "Qora sarlavha", 5: "Jadval"};
   function tagHtml(items, size, logo, design) {
-    const w = +size?.w || 58, h = +size?.h || 40, k = h / 40, mm = x => (x * k).toFixed(2) + "mm", d = TAG_DESIGNS[design] ? +design : 1, noRegion = !!size?.noRegion;
+    const w = +size?.w || 58, h = +size?.h || 40, k = h / 40, mm = x => (x * k).toFixed(2) + "mm", d = TAG_DESIGNS[design] ? +design : 1, noRegion = false;
     const fit = (t, base, max) => { const n = String(t || "").length; return mm(n > max ? base * max / n : base); };
     const V = (x, base, max, cls = "") => `<b class="${cls}" style="font-size:${fit(x, base, max)}">${v(x)}</b>`;
     const foot = `<div class="foot"><span>${TG}${IG}<em>@barakasavdorasmiy</em></span><span>${PH}<em>73 249-29-29</em></span></div>`;
