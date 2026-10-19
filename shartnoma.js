@@ -164,8 +164,8 @@ em{font-style:normal;font-weight:800}
 .f.end{justify-content:flex-end}
 .r3{display:grid;grid-template-columns:1.9fr 1fr 1fr;gap:${mm(1.4)}}
 .mid.nr{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:${mm(3)}}.mid.nr .lg svg{max-height:${mm(18)}}
-.mid{flex:1;display:grid;grid-template-columns:1fr .9fr 1.35fr;align-items:end;gap:${mm(1.6)};padding:${mm(.6)} 0 ${mm(1.2)}}
-.lg{display:flex;align-items:center;justify-content:center;height:100%;min-height:0}.lg svg{width:100%;height:100%;max-height:${mm(17)}}
+.mid{flex:1;display:grid;grid-template-columns:.9fr 1.25fr 1.3fr;align-items:end;gap:${mm(1.4)};padding:${mm(.6)} 0 ${mm(1.2)}}
+.lg{display:flex;align-items:center;justify-content:center;height:100%;min-height:0}.lg svg{width:100%;height:100%;max-height:${mm(22)}}
 .lg.sm svg{max-height:${mm(11)}}.lg.tall svg{max-height:${mm(26)}}.lg.line svg{max-height:${mm(5.5)}}
 .mid2{flex:1;display:grid;grid-template-columns:1.3fr 1fr;align-items:center;gap:${mm(2)};padding:${mm(.6)} 0}
 .pricebar{background:#000;color:#fff;border-radius:${mm(1)};display:flex;align-items:center;justify-content:space-between;padding:${mm(.6)} ${mm(2)};margin-bottom:${mm(1)}}
