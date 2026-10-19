@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.19-13"></script>
+<script src="shartnoma.js?v=2026.10.19-14"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.19-13";
+const APP_VERSION = "2026.10.19-14";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -386,7 +386,8 @@ function syncCatalog() {
     try {
       const items = S.stock.filter(s => s.status === "sotuvda").map(s => ({id: s.id, branchId: s.branchId, modelName: s.modelName || "", brand: s.brand || "", mem: s.mem || "", color: s.color || "", grade: s.grade || "", battery: s.battery || null, cyc: s.cyc ?? null, box: s.box || "", cond: s.cond || "bu", sellUsd: s.sellUsd || 0}));
       const branches = Object.fromEntries(S.branches.map(b => [b.id, b.name])), offices = S.branches.filter(b => b.isOffice).map(b => b.id);
-      await setDoc(doc(db, "settings", "catalog"), {items, branches, offices, updatedAt: serverTimestamp()});
+      const addrs = Object.fromEntries(S.branches.filter(b => b.address).map(b => [b.id, b.address]));
+      await setDoc(doc(db, "settings", "catalog"), {items, branches, offices, addrs, updatedAt: serverTimestamp()});
     } catch (e) { console.warn("catalog", e); }
   }, 400);
 }

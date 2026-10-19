@@ -315,7 +315,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.19-13";
+const APP_VERSION = "2026.10.19-14";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -416,7 +416,7 @@ async function loadAll() {
   S.allModels = ms.docs.map(d => ({id: d.id, ...d.data()})).filter(m => m.active !== false).sort((x, y) => (x.sort || 0) - (y.sort || 0));
   // Faqat iPhone bilan ishlanadi
   S.models = S.allModels.filter(IN_RANGE);
-  S.branches = Object.entries(c.branches || {}).map(([id, name]) => ({id, name}));
+  S.branches = Object.entries(c.branches || {}).map(([id, name]) => ({id, name: c.addrs?.[id] ? `${name} (${c.addrs[id]})` : name}));
   // Sotuvdagi telefonlar — admin panel yuritadigan qisqa ro'yxat (tannarx va IMEI yo'q)
   S.stock = (c.items || []).filter(i => i.sellUsd > 0 && (i.brand ? i.brand === "Apple" : /iphone/i.test(i.modelName))).sort((a, b) => b.sellUsd - a.sellUsd);
 }
