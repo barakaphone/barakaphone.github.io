@@ -122,40 +122,68 @@ ${pay}
 
   /* ---------- SENNIK (narx yorlig'i) — Xprinter kabi termoprinter uchun ----------
      O'lcham Sozlamalarda (mm). Hamma o'lchamlar etiketka balandligiga qarab moslashadi. */
-  function tagHtml(items, size, logo) {
-    const w = +size?.w || 58, h = +size?.h || 40, k = h / 40, mm = x => (x * k).toFixed(2) + "mm";
+  /* Sennik dizaynlari (1–5). Hammasi qora-oq, termoprinter uchun: chetdan ~3 mm bo'sh joy, qalin yozuvlar. */
+  const logoSvg = (fg = "#000", bg = "#fff", stacked = true) => {
+    const mark = `<path d="M14 6h52v4L2 74V20Q2 6 14 6z" fill="${fg}"/><path d="M88 0v70q0 6-6 6H8L88 0z" fill="${fg}"/><rect x="30" y="44" width="5" height="34" fill="${bg}"/><rect x="47" y="30" width="5" height="48" fill="${bg}"/><rect x="64" y="16" width="5" height="62" fill="${bg}"/>`;
+    return stacked
+      ? `<svg viewBox="0 0 220 150"><g transform="translate(66,0)">${mark}</g><text x="110" y="120" text-anchor="middle" fill="${fg}" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="40" letter-spacing="2">BARAKA</text><text x="110" y="145" text-anchor="middle" fill="${fg}" font-family="Arial,sans-serif" font-weight="700" font-size="19">Development</text></svg>`
+      : `<svg viewBox="0 0 330 80"><g>${mark}</g><text x="102" y="50" fill="${fg}" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="44" letter-spacing="2">BARAKA</text><text x="104" y="76" fill="${fg}" font-family="Arial,sans-serif" font-weight="700" font-size="20">Development</text></svg>`;
+  };
+  const TAG_DESIGNS = {1: "Klassik", 2: "Katta narx", 3: "Chap logo", 4: "Qora sarlavha", 5: "Jadval"};
+  function tagHtml(items, size, logo, design) {
+    const w = +size?.w || 58, h = +size?.h || 40, k = h / 40, mm = x => (x * k).toFixed(2) + "mm", d = TAG_DESIGNS[design] ? +design : 1;
     const fit = (t, base, max) => { const n = String(t || "").length; return mm(n > max ? base * max / n : base); };
-    const one = t => `<div class="tag">
-  <div class="top">${[["Model:", t.model, 15], ["Xotira:", t.mem, 9], ["Yomkost:", t.batt, 7]].map(([l, x, mx]) => `<div><i>${l}</i><b style="font-size:${fit(x, 3.1, mx)}">${v(x)}</b></div>`).join("")}</div>
-  <div class="mid"><div class="side"><b style="font-size:${fit(t.region, 3, 8)}">${v(t.region)}</b><i>Region:</i></div>
-    <div class="logo">${LOGO}</div>
-    <div class="side"><b class="price" style="font-size:${fit(t.price, 3.6, 11)}">${v(t.price)}</b><i>Narx:</i></div></div>
-  <div class="foot"><span>${TG}${IG} @barakasavdorasmiy</span><span>${PH} 73 <b>249-29-29</b></span></div></div>`;
-    return `<!doctype html><html><head><meta charset="utf-8"><title>Sennik</title><style>
-@page{size:${w}mm ${h}mm;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}
+    const V = (x, base, max, cls = "") => `<b class="${cls}" style="font-size:${fit(x, base, max)}">${v(x)}</b>`;
+    const foot = `<div class="foot"><span>${TG}${IG}<em>@barakasavdorasmiy</em></span><span>${PH}<em>73 249-29-29</em></span></div>`;
+    const field = (l, x, base, max) => `<div class="f"><i>${l}</i>${V(x, base, max)}</div>`;
+    const layouts = {
+      1: t => `<div class="r3">${field("Model:", t.model, 3.4, 99)}${field("Xotira:", t.mem, 3.3, 7)}${field("Yomkost:", t.batt, 3.3, 5)}</div>
+        <div class="mid"><div class="f end">${V(t.region, 3.2, 7)}<i>Region:</i></div><div class="lg">${logoSvg()}</div><div class="f end">${V(t.price, 3.8, 99)}<i>Narx:</i></div></div>${foot}`,
+      2: t => `<div class="r3">${field("Model:", t.model, 3.4, 99)}${field("Xotira:", t.mem, 3.2, 7)}${field("Yomkost:", t.batt, 3.2, 5)}</div>
+        <div class="mid2"><div class="lg sm">${logoSvg()}</div><div class="f">${field("Region:", t.region, 3, 7)}</div></div>
+        <div class="pricebar"><i>NARX</i>${V(t.price, 5.2, 11)}</div>${foot}`,
+      3: t => `<div class="split"><div class="lg tall">${logoSvg()}</div><div class="rows">
+        ${[["Model", t.model, 3.5, 99], ["Xotira", t.mem, 3.3, 9], ["Yomkost", t.batt, 3.3, 9], ["Region", t.region, 3.3, 9]].map(([l, x, b, mx]) => `<div class="row"><i>${l}:</i>${V(x, b, mx)}</div>`).join("")}
+        <div class="row price"><i>Narx:</i>${V(t.price, 4, 99)}</div></div></div>${foot}`,
+      4: t => `<div class="band">${logoSvg("#fff", "#000", false)}</div>
+        <div class="g2">${field("Model:", t.model, 3.5, 99)}${field("Xotira:", t.mem, 3.3, 8)}${field("Yomkost:", t.batt, 3.3, 8)}${field("Region:", t.region, 3.3, 8)}</div>
+        <div class="pricebar light"><i>Narx:</i>${V(t.price, 4.6, 11)}</div>${foot}`,
+      5: t => `<div class="tb"><div class="c full head"><div class="lg line">${logoSvg("#000", "#fff", false)}</div></div>
+        <div class="c full"><i>Model</i>${V(t.model, 3.8, 99)}</div>
+        <div class="c"><i>Xotira</i>${V(t.mem, 3.3, 8)}</div><div class="c"><i>Yomkost</i>${V(t.batt, 3.3, 8)}</div>
+        <div class="c"><i>Region</i>${V(t.region, 3.3, 8)}</div><div class="c"><i>Narx</i>${V(t.price, 3.6, 99)}</div></div>${foot}`
+    };
+    const css = `@page{size:${w}mm ${h}mm;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}
 body{font-family:Arial,Helvetica,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.tag{width:${w}mm;height:${h}mm;padding:${mm(1.6)} ${mm(2)} ${mm(1)};display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page}
-.tag:last-child{page-break-after:auto;break-after:auto}
-i{font-style:italic;font-size:${mm(2.4)};color:#222}b{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:clip}
-.top{display:grid;grid-template-columns:1.45fr 1fr 1fr;gap:${mm(1.5)};text-align:center}
-.top div{display:flex;flex-direction:column;align-items:center;gap:${mm(0.6)}}.top b{display:block;width:100%;border-bottom:${mm(0.25)} solid #000;padding-bottom:${mm(0.3)};line-height:1.15}
-.mid{flex:1;display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:${mm(1.5)};padding-bottom:${mm(1)}}
-.side{display:flex;flex-direction:column;align-items:center;text-align:center;gap:${mm(0.6)}}.side b{display:block;width:100%;border-bottom:${mm(0.25)} solid #000;padding-bottom:${mm(0.3)};line-height:1.15}
-.logo{display:flex;align-items:center;justify-content:center;height:100%;padding-top:${mm(.5)}}.logo svg{width:100%;max-height:${mm(15)}}
-.foot{border-top:${mm(0.3)} solid #000;padding-top:${mm(0.8)};display:flex;justify-content:space-between;align-items:center;font-size:${mm(2.2)};white-space:nowrap}
-.foot span{display:flex;align-items:center;gap:${mm(0.6)}}.foot svg{width:${mm(2.6)};height:${mm(2.6)}}.foot b{font-size:${mm(2.6)}}
-@media screen{body{background:#ddd;padding:12px;display:flex;flex-wrap:wrap;gap:12px}.tag{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}}
-</style></head><body>${items.map(one).join("")}<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>`;
+.tag{width:${w}mm;height:${h}mm;padding:${mm(2.6)} ${mm(3.2)} ${mm(2.2)};display:flex;flex-direction:column;overflow:hidden;break-after:page;page-break-after:always}
+.tag:last-child{break-after:auto;page-break-after:auto}
+i{font-style:normal;font-weight:700;font-size:${mm(2.5)};color:#000;white-space:nowrap}b{font-weight:900;white-space:nowrap;overflow:hidden;line-height:1.12;color:#000}
+em{font-style:normal;font-weight:800}
+.f{display:flex;flex-direction:column;align-items:center;text-align:center;gap:${mm(.4)};min-width:0}.f b{display:block;width:100%;border-bottom:${mm(.35)} solid #000;padding-bottom:${mm(.3)}}
+.f.end{justify-content:flex-end}
+.r3{display:grid;grid-template-columns:1.9fr 1fr 1fr;gap:${mm(1.4)}}
+.mid{flex:1;display:grid;grid-template-columns:1fr .9fr 1.35fr;align-items:end;gap:${mm(1.6)};padding:${mm(.6)} 0 ${mm(1.2)}}
+.lg{display:flex;align-items:center;justify-content:center;height:100%;min-height:0}.lg svg{width:100%;height:100%;max-height:${mm(17)}}
+.lg.sm svg{max-height:${mm(11)}}.lg.tall svg{max-height:${mm(26)}}.lg.line svg{max-height:${mm(5.5)}}
+.mid2{flex:1;display:grid;grid-template-columns:1.3fr 1fr;align-items:center;gap:${mm(2)};padding:${mm(.6)} 0}
+.pricebar{background:#000;color:#fff;border-radius:${mm(1)};display:flex;align-items:center;justify-content:space-between;padding:${mm(.6)} ${mm(2)};margin-bottom:${mm(1)}}
+.pricebar i,.pricebar b{color:#fff}.pricebar b{flex:1;min-width:0;text-align:right;margin-left:${mm(1.5)}}.pricebar.light{background:#fff;border:${mm(.45)} solid #000}.pricebar.light i,.pricebar.light b{color:#000}
+.split{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.9fr);gap:${mm(2)};padding-bottom:${mm(1)};min-height:0}
+.rows{display:flex;flex-direction:column;justify-content:space-between}.row{display:flex;align-items:baseline;gap:${mm(1)};border-bottom:${mm(.3)} solid #000;padding:${mm(.2)} 0}
+.row i{width:${mm(11)};flex:none}.row b{flex:1;min-width:0;text-align:right}.row.price{border-bottom:${mm(.5)} solid #000}
+.band{background:#000;border-radius:${mm(1)};padding:${mm(.8)} ${mm(2)};display:flex;justify-content:center;margin-bottom:${mm(1)}}.band svg{height:${mm(6)}}
+.g2{flex:1;display:grid;grid-template-columns:1.3fr 1fr;grid-template-rows:1fr 1fr;gap:${mm(.6)} ${mm(2)};margin-bottom:${mm(1)}}.g2 .f{align-items:flex-start;text-align:left;justify-content:flex-end}
+.tb{flex:1;display:grid;grid-template-columns:1fr 1fr;border:${mm(.45)} solid #000;border-radius:${mm(1)};overflow:hidden;margin-bottom:${mm(1)};min-height:0}
+.tb .c{border-bottom:${mm(.3)} solid #000;padding:${mm(.3)} ${mm(1.2)};display:flex;flex-direction:column;justify-content:center;min-width:0}.tb .c:nth-child(even){border-right:${mm(.3)} solid #000}
+.tb .full{grid-column:1/-1;border-right:0!important}.tb .c:nth-last-child(-n+2){border-bottom:0}.tb i{font-size:${mm(2.1)}}.tb .head{align-items:center}
+.foot{border-top:${mm(.4)} solid #000;padding-top:${mm(.8)};display:flex;justify-content:space-between;align-items:center;font-size:${mm(2.45)};white-space:nowrap;gap:${mm(1)}}
+.foot span{display:flex;align-items:center;gap:${mm(.6)}}.foot svg{width:${mm(2.8)};height:${mm(2.8)};flex:none}
+@media screen{body{background:#ccc;padding:12px;display:flex;flex-wrap:wrap;gap:12px}.tag{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}}`;
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Sennik</title><style>${css}</style></head><body>${items.map(t => `<div class="tag d${d}">${layouts[d](t)}</div>`).join("")}<script>function fitAll(){document.querySelectorAll(".tag b").forEach(function(b){var s=parseFloat(getComputedStyle(b).fontSize);while(b.scrollWidth>b.clientWidth+.5&&s>5){s-=.25;b.style.fontSize=s+"px"}})}fitAll();window.onload=function(){fitAll();if(!window.noPrint)setTimeout(function(){window.print()},300)}<\/script></body></html>`;
   }
-  // Qora-oq logo (termoprinter uchun): belgi + BARAKA + Development
-  const LOGO = `<svg viewBox="0 0 220 150" aria-label="Baraka Development"><g transform="translate(66,0)">
-<path d="M14 6h52v4L2 74V20Q2 6 14 6z" fill="#000"/><path d="M88 0v70q0 6-6 6H8L88 0z" fill="#000"/>
-<path d="M24 76 50 50M40 76 66 50M56 76 82 50" stroke="#fff" stroke-width="0"/><rect x="30" y="44" width="5" height="34" fill="#fff"/><rect x="47" y="30" width="5" height="48" fill="#fff"/><rect x="64" y="16" width="5" height="62" fill="#fff"/></g>
-<text x="110" y="118" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="38" letter-spacing="2">BARAKA</text>
-<text x="110" y="142" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="17" letter-spacing=".5">Development</text></svg>`;
   const TG = '<svg viewBox="0 0 24 24"><path d="M2 11.5 21 4l-3.2 16-6-4.6-3 2.8.4-4.6L17 7 7.6 13.2 2 11.5z" fill="#000"/></svg>';
   const IG = '<svg viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="5" fill="#000"/><circle cx="12" cy="12" r="4.3" fill="none" stroke="#fff" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.2" fill="#fff"/></svg>';
   const PH = '<svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" fill="#000"/></svg>';
 
-  window.Shartnoma = {buyHtml, sellHtml, open, words, backCoverUsd, tagHtml, REQ_PRESETS, REQ_FIELDS};
+  window.Shartnoma = {buyHtml, sellHtml, open, words, backCoverUsd, tagHtml, TAG_DESIGNS, REQ_PRESETS, REQ_FIELDS};
 })();
