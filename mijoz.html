@@ -277,23 +277,6 @@ select.inp{appearance:auto}
 .phin .inp{border-radius:0 10px 10px 0}
 @media (max-width:640px){.pgrid{grid-template-columns:repeat(2,1fr);gap:8px}.pname{font-size:15px}.pprice{font-size:16px}}
 </style>
-<!-- Meta Pixel Code -->
-<script>
-!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '307095875180044');
-fbq('track', 'PageView');
-</script>
-<noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id=307095875180044&ev=PageView&noscript=1"
-/></noscript>
-<!-- End Meta Pixel Code -->
 </head>
 <body>
 
@@ -315,7 +298,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.19-3";
+const APP_VERSION = "2026.10.19-4";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -862,8 +845,6 @@ async function saveAriza() {
       deviceUzs: c.uzs, stockId: st ? st.id : "", ourModel: st ? `${st.modelName} ${st.mem || ""}`.trim() : "", ourUzs: st ? toUzs(st.sellUsd) : 0,
       diffUzs: diff, payType: p ? "nasiya" : "", months: p ? W.months : 0, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0,
       kurs: S.settings.kurs, createdAt: serverTimestamp()});
-    // Meta Pixel: ariza yuborildi — reklama samaradorligi uchun "Lead" hodisasi
-    try { window.fbq && window.fbq("track", "Lead"); } catch {}
     W.done = {no, sell: !st, phone: fmtPhone(phone), gave: `${m.name} ${W.mem}`, took: st ? `${st.modelName} ${st.mem || ""}`.trim() : "",
               bigLabel: p ? t("Oylik to'lov, {n} oy", {n: W.months}) : t("Sizga qaytariladi"), bigValue: !st ? c.uzs : p ? p.monthly : Math.abs(diff)};
     W.saving = false; renderWizard(); window.scrollTo(0, 0);
