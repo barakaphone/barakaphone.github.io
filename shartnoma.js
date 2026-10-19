@@ -156,7 +156,7 @@ ${pay}
     };
     const css = `@page{size:${w}mm ${h}mm;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}
 body{font-family:Arial,Helvetica,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.tag{width:${w}mm;height:${h}mm;padding:${mm(2.6)} ${mm(3.2)} ${mm(2.2)};display:flex;flex-direction:column;overflow:hidden;break-after:page;page-break-after:always}
+.tag{width:${w}mm;height:${h}mm;padding:${mm(2.6)} ${mm(5)} ${mm(2.2)} ${mm(3.2)};display:flex;flex-direction:column;overflow:hidden;break-after:page;page-break-after:always}
 .tag:last-child{break-after:auto;page-break-after:auto}
 i{font-style:normal;font-weight:700;font-size:${mm(2.5)};color:#000;white-space:nowrap}b{font-weight:900;white-space:nowrap;overflow:hidden;line-height:1.12;color:#000}
 em{font-style:normal;font-weight:800}
@@ -178,10 +178,10 @@ em{font-style:normal;font-weight:800}
 .tb{flex:1;display:grid;grid-template-columns:1fr 1fr;border:${mm(.45)} solid #000;border-radius:${mm(1)};overflow:hidden;margin-bottom:${mm(1)};min-height:0}
 .tb .c{border-bottom:${mm(.3)} solid #000;padding:${mm(.3)} ${mm(1.2)};display:flex;flex-direction:column;justify-content:center;min-width:0}.tb .c:nth-child(even){border-right:${mm(.3)} solid #000}
 .tb .full{grid-column:1/-1;border-right:0!important}.tb .c:nth-last-child(-n+2){border-bottom:0}.tb i{font-size:${mm(2.1)}}.tb .head{align-items:center}
-.foot{border-top:${mm(.4)} solid #000;padding-top:${mm(.8)};display:flex;justify-content:space-between;align-items:center;font-size:${mm(2.45)};white-space:nowrap;gap:${mm(1)}}
+.foot{overflow:hidden;border-top:${mm(.4)} solid #000;padding-top:${mm(.8)};display:flex;justify-content:space-between;align-items:center;font-size:${mm(2.45)};white-space:nowrap;gap:${mm(1)}}
 .foot span{display:flex;align-items:center;gap:${mm(.6)}}.foot svg{width:${mm(2.8)};height:${mm(2.8)};flex:none}
 @media screen{body{background:#ccc;padding:12px;display:flex;flex-wrap:wrap;gap:12px}.tag{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}}`;
-    return `<!doctype html><html><head><meta charset="utf-8"><title>Sennik</title><style>${css}</style></head><body>${items.map(t => `<div class="tag d${d}">${layouts[d](t)}</div>`).join("")}<script>function fitAll(){document.querySelectorAll(".tag b").forEach(function(b){var s=parseFloat(getComputedStyle(b).fontSize);while(b.scrollWidth>b.clientWidth+.5&&s>5){s-=.25;b.style.fontSize=s+"px"}})}fitAll();window.onload=function(){fitAll();if(!window.noPrint)setTimeout(function(){window.print()},300)}<\/script></body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Sennik</title><style>${css}</style></head><body>${items.map(t => `<div class="tag d${d}">${layouts[d](t)}</div>`).join("")}<script>function fitAll(){document.querySelectorAll(".tag b").forEach(function(b){var s=parseFloat(getComputedStyle(b).fontSize);while(b.scrollWidth>b.clientWidth+.5&&s>5){s-=.25;b.style.fontSize=s+"px"}});document.querySelectorAll(".foot").forEach(function(f){var s=parseFloat(getComputedStyle(f).fontSize);while(f.scrollWidth>f.clientWidth+.5&&s>5){s-=.25;f.style.fontSize=s+"px"}})}fitAll();window.onload=function(){fitAll();if(!window.noPrint)setTimeout(function(){window.print()},300)}<\/script></body></html>`;
   }
   const TG = '<svg viewBox="0 0 24 24"><path d="M2 11.5 21 4l-3.2 16-6-4.6-3 2.8.4-4.6L17 7 7.6 13.2 2 11.5z" fill="#000"/></svg>';
   const IG = '<svg viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="5" fill="#000"/><circle cx="12" cy="12" r="4.3" fill="none" stroke="#fff" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.2" fill="#fff"/></svg>';
