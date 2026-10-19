@@ -222,24 +222,30 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .ver{text-align:center;font-size:12px;color:var(--muted);margin:12px 0 0}
+.tabs .badge{font-size:11px;padding:1px 6px;margin-left:2px}
+@media (max-width:440px){.tabs button{font-size:13px;padding:8px 3px}.tabs{gap:3px;padding:0 6px 12px}}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px}
+.sgrid>div{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:14px}
+.sgrid .k{font-size:12px;color:var(--muted)}.sgrid b{display:block}
+.sgrid .hl{background:var(--g);border-color:var(--g);color:#fff}.sgrid .hl .k{color:rgba(255,255,255,.7)}.sgrid .hl b{color:var(--y)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:500px){.row2{grid-template-columns:1fr}}
+.imeires{display:flex;flex-direction:column;gap:8px;margin:-4px 0 14px}
+.imeires>div{background:var(--surface);border:1.5px solid var(--y);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.5}
+.bphotos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bph{position:relative;aspect-ratio:3/4;border:1.5px dashed var(--yLine);border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer}
+.bphotos.view .bph{border-style:solid;border-color:var(--line)}
+.bph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bph .guide{width:78%;height:auto;margin-bottom:18px}
+.bph .cam{position:absolute;top:6px;right:6px;font-size:15px;opacity:.75}
+.bph .lab{position:absolute;left:4px;right:4px;bottom:4px;background:rgba(0,20,60,.72);color:#fff;font-size:11px;padding:2px 6px;border-radius:6px;text-align:center}
+.bph input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.bchk{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer;background:var(--surface)}
+.bchk input{width:20px;height:20px;flex:none;margin:1px 0 0;accent-color:#00297D}
+.bph.pass{aspect-ratio:16/10;max-width:300px}
+.bph .pico{font-size:42px;margin-bottom:18px;opacity:.8}
+@media (max-width:500px){.bphotos{grid-template-columns:repeat(2,1fr)}}
 </style>
-<!-- Meta Pixel Code -->
-<script>
-!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '307095875180044');
-fbq('track', 'PageView');
-</script>
-<noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id=307095875180044&ev=PageView&noscript=1"
-/></noscript>
-<!-- End Meta Pixel Code -->
 </head>
 <body>
 
@@ -265,6 +271,7 @@ src="https://www.facebook.com/tr?id=307095875180044&ev=PageView&noscript=1"
       <button data-tab="tradein" class="on">Trade-in</button>
       <button data-tab="stock">Ombor</button>
       <button data-tab="deals">Shartnomalar</button>
+      <button data-tab="arizalar">Arizalar <span class="badge gold hidden" id="arzCnt"></span></button>
       <button data-tab="profile">Profil</button>
     </nav>
   </header>
@@ -275,18 +282,19 @@ src="https://www.facebook.com/tr?id=307095875180044&ev=PageView&noscript=1"
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
+<script src="shartnoma.js?v=2026.10.17-4"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
          EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where,
-         writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, query, where,
+         writeBatch, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.19-1";
+const APP_VERSION = "2026.10.19-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -308,7 +316,8 @@ const firebaseConfig = {
   appId: "1:17371402023:web:c401d80597bd34b346e302"
 };
 const LOGIN_DOMAIN = "baraka.local";
-const app = initializeApp(firebaseConfig);
+// Alohida nom: sotuvchi logini admin panel loginidan ajralgan holda saqlanadi (bitta brauzerda ikkalasi ham ochiq tura oladi)
+const app = initializeApp(firebaseConfig, "sotuvchi");
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -345,6 +354,13 @@ const stable = v => Array.isArray(v) ? "[" + v.map(stable).join(",") + "]" : v &
 
 /* ================= PRICING (admin panel bilan bir xil) ================= */
 function hasCycles(m) { return m && m.brand === "Apple" && /iPhone (1[5-9]|[2-9]\d|Air)/.test(m.name); }
+// Har 1% batareya kamayishi uchun battPct%, har 100 sikl uchun cycPct% (admin Sozlamalarda o'zgartiradi)
+function battAdj(m, a, s) {
+  const r = Math.round, out = [], bp = s.battPct ?? 1, cp = s.cycPct ?? 1, batt = a.batt ?? 100;
+  const bd = Math.min(50, Math.max(0, 100 - batt) * bp); if (bd > 0) out.push([`Batareya ${batt}%`, r(bd * 100) / 100]);
+  if (hasCycles(m) && a.cyc != null && a.cyc !== "") { const cd = Math.min(50, Math.max(0, +a.cyc) / 100 * cp); if (cd > 0) out.push([`Batareya sikli: ${a.cyc}`, r(cd * 100) / 100]); }
+  return out;
+}
 function calcTradein(m, mem, a, s) {
   const mi = Math.max(0, m.mems.indexOf(mem));
   const market = m.market + m.step * mi;
@@ -354,12 +370,13 @@ function calcTradein(m, mem, a, s) {
   const lines = []; let pts = 0;
   const QN = {screen: "Ekran", body: "Korpus", bio: "Face ID / Touch ID", cam: "Kamera", repair: "Ta'mir"};
   for (const k of ["screen", "body", "bio", "cam", "repair"]) { const o = (s.pts[k] || []).find(o => o.v === a[k]); if (o && o.p) { pts += o.p; lines.push([QN[k] + ": " + o.label.toLowerCase(), o.p]); } }
-  const bp = s.battPts.find(b => (a.batt ?? 100) >= b.min); if (bp && bp.p) { pts += bp.p; lines.push([`Batareya ${a.batt}%`, bp.p]); }
-  if (hasCycles(m) && a.cyc != null && a.cyc !== "") { const c = s.cycPts.find(x => a.cyc <= x.max) || s.cycPts[s.cycPts.length - 1]; if (c.p) { pts += c.p; lines.push([`Batareya sikli: ${a.cyc}`, c.p]); } }
   let gi = s.grades.findIndex(g => pts <= g.max); if (gi < 0) gi = s.grades.length - 1;
-  let k = 1 - s.grades[gi].pct / 100; if (a.box === "no") k *= 1 - s.noBoxPct / 100;
+  // Har bir nuqson (chizilish, qirilish, ta'mir...) narxdan o'z foizini ayiradi; daraja (A'lo...) faqat nom uchun
+  let k = 1; lines.forEach(l => k *= 1 - l[1] / 100); if (a.box === "no") k *= 1 - s.noBoxPct / 100;
+  // Batareya sig'imi va sikli ham narxga to'g'ridan-to'g'ri ta'sir qiladi
+  const adj = battAdj(m, a, s); adj.forEach(x => k *= 1 - x[1] / 100);
   const u = Math.round(base * k * 100) / 100;
-  return {usd: u, uzs: toUzs(u), points: pts, gi, grade: s.grades[gi].label, gradeLetter: ["A", "B", "C", "D"][Math.min(gi, 3)], lines, sellUsd: Math.round(u * 100 / (100 - s.discPct))};
+  return {usd: u, uzs: toUzs(u), points: pts, gi, grade: s.grades[gi].label, gradeLetter: ["A", "B", "C", "D"][Math.min(gi, 3)], lines, adj, sellUsd: Math.round(u * 100 / (100 - s.discPct))};
 }
 const maxM = () => S.settings.tiers[S.settings.tiers.length - 1].to;
 const rateFor = m => (S.settings.tiers.find(t => m <= t.to) || S.settings.tiers[S.settings.tiers.length - 1]).rate;
@@ -373,16 +390,35 @@ const sliderHtml = (id, v) => `<div class="slcard"><div class="sltop"><span clas
 
 /* ================= STATE ================= */
 const bName = id => S.branches.find(b => b.id === id)?.name || "Boshqa filial";
-const S = {me: null, branch: null, branches: [], stockAll: [], stockScope: "mine", settings: null, models: [], stock: [], deals: [], sales: [], tab: "tradein", stockFilter: "sotuvda", stockQ: ""};
+const S = {me: null, branch: null, branches: [], stockAll: [], stockScope: "mine", settings: null, models: [], stock: [], deals: [], sales: [], arizalar: [], arzOk: true, arzFilter: "yangi", tab: "tradein", stockFilter: "sotuvda", stockQ: ""};
 
+// Ishlanadigan modellar: iPhone 13 dan 17 Pro Max gacha + admin keyin qo'shgan modellar (custom)
+const IN_RANGE = m => m.custom === true || (m.brand === "Apple" && (n => n >= 13 && n <= 17)(+(String(m.name).match(/^iPhone (\d+)/) || [])[1]));
+/* Ofis xodimi: barcha filiallarda ishlaydi — qaysi filial nomidan ishlayotganini yuqorida tanlaydi (tanlov eslab qolinadi) */
+async function pickWorkBranch() {
+  const hb = await getDoc(doc(db, "branches", S.homeBranch));
+  S.office = !!(hb.exists() && hb.data().isOffice);
+  if (!S.office) return;
+  const cat = (await getDoc(doc(db, "settings", "catalog"))).data() || {};
+  S.workList = Object.entries(cat.branches || {}).filter(([id]) => !(cat.offices || []).includes(id) && id !== S.homeBranch).map(([id, name]) => ({id, name})).sort((a, b) => a.name.localeCompare(b.name, "uz", {numeric: true}));
+  let saved = null; try { saved = localStorage.getItem("workBranch"); } catch {}
+  S.me.branchId = S.workList.find(b => b.id === saved)?.id || S.workList[0]?.id || S.homeBranch;
+}
+function renderWorkPicker() {
+  if (!S.office || !S.workList?.length) return;
+  $("#meBranch").innerHTML = `<select id="workSel" class="inp sm" style="min-height:30px;padding:2px 8px;font-size:13px" title="Qaysi filial nomidan ishlayapsiz">${S.workList.map(b => `<option value="${b.id}" ${b.id === S.me.branchId ? "selected" : ""}>Ofis → ${esc(b.name)}</option>`).join("")}</select>`;
+  $("#workSel").onchange = e => { try { localStorage.setItem("workBranch", e.target.value); } catch {} location.reload(); };
+}
 async function loadAll() {
   const b = S.me.branchId;
-  const [st, br, ms, sk, dl, sa, cat] = await Promise.all([
+  const [st, br, ms, sk, dl, sa, cat, az] = await Promise.all([
     getDoc(doc(db, "settings", "main")), getDoc(doc(db, "branches", b)), getDocs(collection(db, "models")),
     getDocs(query(collection(db, "stock"), where("branchId", "==", b))),
     getDocs(query(collection(db, "deals"), where("branchId", "==", b))),
     getDocs(query(collection(db, "sales"), where("branchId", "==", b))),
-    getDoc(doc(db, "settings", "catalog")).catch(() => null)]);
+    getDoc(doc(db, "settings", "catalog")).catch(() => null),
+    // Mijoz arizalari: shu filialga yoki filial tanlanmagan holda yuborilganlar
+    getDocs(query(collection(db, "arizalar"), where("branchId", "in", [b, ""]))).catch(e => { console.warn("arizalar", e); return null; })]);
   if (!st.exists()) throw {message: "Tizim hali sozlanmagan. Admin bilan bog'laning."};
   const list = s => s.docs.map(d => ({id: d.id, ...d.data()}));
   const byDate = (x, y) => (toDate(y.createdAt) || 0) - (toDate(x.createdAt) || 0);
@@ -390,11 +426,14 @@ async function loadAll() {
   const c = cat && cat.exists() ? cat.data() : {items: [], branches: {}};
   S.branches = Object.entries(c.branches || {}).map(([id, name]) => ({id, name}));
   S.branch = br.exists() ? {id: b, ...br.data()} : {id: b, name: c.branches?.[b] || "—"};
-  S.models = list(ms).filter(m => m.active !== false).sort((x, y) => (x.sort || 0) - (y.sort || 0));
+  S.models = list(ms).filter(m => m.active !== false && IN_RANGE(m)).sort((x, y) => (x.sort || 0) - (y.sort || 0));
   S.stock = list(sk).sort(byDate);
   // Boshqa filiallardagi sotuvdagi telefonlar — admin panel yuritadigan ro'yxatdan
   S.stockAll = [...S.stock, ...(c.items || []).filter(i => i.branchId !== b).map(i => ({...i, status: "sotuvda", other: true}))]; S.deals = list(dl).sort(byDate); S.sales = list(sa).sort(byDate);
+  S.arzOk = !!az; S.arizalar = az ? list(az).sort(byDate) : [];
+  updArzBadge();
   $("#meBranch").textContent = S.branch.name;
+  renderWorkPicker();
 }
 
 
@@ -433,10 +472,11 @@ onAuthStateChanged(auth, async user => {
     const p = ps.exists() ? ps.data() : null;
     if (!p || !p.active) { await signOut(auth); return loginError("Sizning loginingiz bloklangan yoki o'chirilgan. Admin bilan bog'laning."); }
     if (!p.branchId) { await signOut(auth); return loginError("Siz hali filialga biriktirilmagansiz. Admin bilan bog'laning."); }
-    S.me = {id: user.uid, ...p};
+    S.me = {id: user.uid, ...p}; S.homeBranch = p.branchId;
+    await pickWorkBranch();
     $("#meName").textContent = p.fullName || "Xodim";
     show("app"); $("#page").innerHTML = `<div class="loading">Ma'lumotlar yuklanmoqda…</div>`;
-    await loadAll(); go(S.tab);
+    await loadAll(); go(S.tab); startArzLive();
   } catch (e) { await signOut(auth); loginError(errText(e)); }
 });
 function loginError(t) { show("login"); const e = $("#loginErr"); e.textContent = t; e.classList.remove("hidden"); }
@@ -454,7 +494,7 @@ function go(tab) {
   S.tab = tab;
   document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   $("#actionBar").classList.toggle("hidden", tab !== "tradein");
-  ({tradein: renderWizard, stock: renderStock, deals: renderDeals, profile: renderProfile})[tab]();
+  ({tradein: renderWizard, stock: renderStock, deals: renderDeals, arizalar: renderArizalar, profile: renderProfile})[tab]();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => go(b.dataset.tab)));
@@ -534,6 +574,16 @@ function condSvg(kind, v) {
   return `<svg viewBox="0 0 420 270" role="img" aria-label="${kind === "screen" ? "Ekran" : "Korpus"} holati" preserveAspectRatio="xMaxYMid slice">${defs}<rect width="420" height="270" fill="#EEF2F8"/>${body}</svg>`;
 }
 
+// Rang nomlari: asl nomi yonida qavs ichida o'zbekcha nomi
+const COLOR_UZ = {"black": "qora", "white": "oq", "silver": "kumush", "gold": "oltin", "space gray": "kulrang", "space grey": "kulrang", "space black": "qora",
+  "midnight": "to'q qora", "starlight": "och oltin", "blue": "ko'k", "red": "qizil", "(product)red": "qizil", "green": "yashil", "purple": "binafsha",
+  "deep purple": "to'q binafsha", "yellow": "sariq", "pink": "pushti", "coral": "marjon", "graphite": "to'q kulrang", "sierra blue": "och ko'k",
+  "pacific blue": "to'q ko'k", "alpine green": "to'q yashil", "midnight green": "to'q yashil", "natural titanium": "tabiiy titan", "black titanium": "qora titan",
+  "white titanium": "oq titan", "blue titanium": "ko'k titan", "desert titanium": "qum rang titan", "teal": "firuza", "ultramarine": "to'q ko'k",
+  "cosmic orange": "to'q sariq", "deep blue": "to'q ko'k", "lavender": "och binafsha", "mist blue": "och ko'k", "sage": "och yashil",
+  "cloud white": "oq", "light gold": "och oltin", "sky blue": "havorang", "burgundy": "to'q qizil", "glacier blue": "och ko'k"};
+const colorUz = c => { const u = COLOR_UZ[String(c || "").trim().toLowerCase()]; return u ? `${c} (${u})` : String(c || ""); };
+
 /* ================= TRADE-IN WIZARD ================= */
 const STEPS = ["Narxlash", "Almashtirish", "Nasiya", "Tasdiqlash"];
 const PHOTO_SLOTS = ["Old tomoni", "Orqa tomoni", "Yoqilgan ekran", "IMEI (*#06#)"];
@@ -554,14 +604,31 @@ const QS = [
   {k: "box", t: "Qutisi bormi?", opts: [["yes", "Ha, bor"], ["no", "Yo'q"]]}
 ];
 const SUMMARY = QS.length;
-function freshW() { return {step: 0, q: 0, hist: [], brand: null, modelId: null, mem: null, color: "", power: null, lock: null, screen: null, body: null, batt: 100, cyc: null, bio: null, cam: null, repair: null, box: null, imei: "", mq: "", stockId: null, months: 6, q2: "", photos: {}, client: {name: "", phone: "", passport: "", address: ""}, done: null, saving: false}; }
+function freshW() { return {step: 0, q: 0, hist: [], brand: null, modelId: null, mem: null, color: "", power: null, lock: null, screen: null, body: null, batt: 100, cyc: null, bio: null, cam: null, repair: null, box: null, imei: "", mq: "", stockId: null, months: 6, q2: "", photos: {}, client: {name: "", phone: "", passport: "", address: ""}, done: null, saving: false, arizaId: null, arizaNo: ""}; }
 let W = freshW();
 const curModel = () => S.models.find(m => m.id === W.modelId);
 // Modelda ranglar kiritilmagan bo'lsa — umumiy ranglar
 const GENERIC_COLORS = ["Qora", "Oq", "Kumush", "Kulrang", "Oltin", "Ko'k", "Yashil", "Binafsha", "Pushti", "Qizil"];
-const colorsOf = m => (m?.colors || []).length ? m.colors : GENERIC_COLORS;
+// Apple'ning rasmiy ranglari (model ranglari kiritilmagan bo'lsa ishlatiladi); "iPhone 17 Air" = "iPhone Air"
+const APPLE_COLORS = {"iphone-18-pro-max":["Black","Silver","Burgundy","Blue"],"iphone-18-pro":["Black","Silver","Burgundy","Glacier Blue"],"iphone-17-pro-max":["Cosmic Orange","Deep Blue","Silver"],"iphone-17-pro":["Cosmic Orange","Deep Blue","Silver"],"iphone-air":["Space Black","Cloud White","Light Gold","Sky Blue"],"iphone-17":["Black","White","Lavender","Mist Blue","Sage"],"iphone-16-pro-max":["Black Titanium","White Titanium","Natural Titanium","Desert Titanium"],"iphone-16-pro":["Black Titanium","White Titanium","Natural Titanium","Desert Titanium"],"iphone-16-plus":["Black","White","Pink","Teal","Ultramarine"],"iphone-16":["Black","White","Pink","Teal","Ultramarine"],"iphone-16e":["Black","White"],"iphone-15-pro-max":["Black Titanium","White Titanium","Blue Titanium","Natural Titanium"],"iphone-15-pro":["Black Titanium","White Titanium","Blue Titanium","Natural Titanium"],"iphone-15-plus":["Black","Blue","Green","Yellow","Pink"],"iphone-15":["Black","Blue","Green","Yellow","Pink"],"iphone-14-pro-max":["Space Black","Silver","Gold","Deep Purple"],"iphone-14-pro":["Space Black","Silver","Gold","Deep Purple"],"iphone-14-plus":["Midnight","Starlight","Purple","Blue","Yellow","(PRODUCT)RED"],"iphone-14":["Midnight","Starlight","Purple","Blue","Yellow","(PRODUCT)RED"],"iphone-se-2022":["Midnight","Starlight","(PRODUCT)RED"],"iphone-13-pro-max":["Graphite","Gold","Silver","Sierra Blue","Alpine Green"],"iphone-13-pro":["Graphite","Gold","Silver","Sierra Blue","Alpine Green"],"iphone-13":["Midnight","Starlight","Blue","Pink","Green","(PRODUCT)RED"],"iphone-13-mini":["Midnight","Starlight","Blue","Pink","Green","(PRODUCT)RED"],"iphone-12-pro-max":["Graphite","Silver","Gold","Pacific Blue"],"iphone-12-pro":["Graphite","Silver","Gold","Pacific Blue"],"iphone-12":["Black","White","Blue","Green","Purple","(PRODUCT)RED"],"iphone-12-mini":["Black","White","Blue","Green","Purple","(PRODUCT)RED"],"iphone-11-pro-max":["Space Gray","Silver","Gold","Midnight Green"],"iphone-11-pro":["Space Gray","Silver","Gold","Midnight Green"],"iphone-11":["Black","White","Purple","Yellow","Green","(PRODUCT)RED"],"iphone-xs-max":["Space Gray","Silver","Gold"],"iphone-xs":["Space Gray","Silver","Gold"],"iphone-xr":["Black","White","Blue","Yellow","Coral","(PRODUCT)RED"],"galaxy-s25-ultra":["Titanium Silverblue","Titanium Black","Titanium Gray","Titanium Whitesilver"],"galaxy-s25":["Navy","Icyblue","Mint","Silver Shadow"],"galaxy-z-fold6":["Silver Shadow","Pink","Navy"],"galaxy-z-flip6":["Blue","Yellow","Mint","Silver Shadow"],"galaxy-s24-ultra":["Titanium Black","Titanium Gray","Titanium Violet","Titanium Yellow"],"galaxy-s24":["Onyx Black","Marble Grey","Cobalt Violet","Amber Yellow"],"galaxy-s23-ultra":["Phantom Black","Cream","Green","Lavender"],"galaxy-s23":["Phantom Black","Cream","Green","Lavender"],"galaxy-a55":["Awesome Navy","Awesome Iceblue","Awesome Lilac","Awesome Lemon"],"galaxy-a35":["Awesome Navy","Awesome Iceblue","Awesome Lilac","Awesome Lemon"],"galaxy-a54":["Awesome Graphite","Awesome White","Awesome Violet","Awesome Lime"],"xiaomi-14t-pro":["Titan Black","Titan Gray","Titan Blue"],"xiaomi-14t":["Titan Black","Titan Gray","Titan Blue","Lemon Green"],"xiaomi-13t-pro":["Black","Alpine Blue","Meadow Green"],"xiaomi-13t":["Black","Alpine Blue","Meadow Green"],"redmi-note-14-pro":["Midnight Black","Ocean Blue","Lavender Purple"],"redmi-note-13-pro":["Midnight Black","Forest Green","Lavender Purple"],"redmi-note-13":["Midnight Black","Mint Green","Ice Blue","Ocean Sunset"]};
+const appleColorsOf = m => { const s = String(m?.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); return APPLE_COLORS[{"iphone-17-air": "iphone-air"}[s] || s] || []; };
+const colorsOf = m => (m?.colors || []).length ? m.colors : appleColorsOf(m).length ? appleColorsOf(m) : GENERIC_COLORS;
 const answers = () => ({power: W.power, lock: W.lock, screen: W.screen, body: W.body, batt: W.batt, cyc: hasCycles(curModel()) ? W.cyc : null, bio: W.bio, cam: W.cam, repair: W.repair, box: W.box});
-const clientCalc = () => { const m = curModel(); return m && W.mem ? calcTradein(m, W.mem, answers(), S.settings) : null; };
+const autoCalc = () => { const m = curModel(); return m && W.mem ? calcTradein(m, W.mem, answers(), S.settings) : null; };
+// Tekshiruvda xato topilsa sotuvchi narxni qo'lda o'zgartiradi (W.manual) — shartnoma shu narx bilan tuziladi
+const clientCalc = () => {
+  const c = autoCalc(); if (!c || c.rejected || !W.manual) return c;
+  const u = Math.round(W.manual.uzs / S.settings.kurs * 100) / 100;
+  return {...c, usd: u, uzs: W.manual.uzs, sellUsd: Math.round(u * 100 / (100 - S.settings.discPct)), manual: true, autoUzs: c.uzs};
+};
+function manualModal() {
+  const c = autoCalc(), cur = W.manual?.uzs || c.uzs;
+  modal(`<h2>Narxni qo'lda o'zgartirish</h2><p class="hint" style="margin-top:0">Hisoblangan narx: <b>${uzs(c.uzs)}</b>. Telefonni tekshirishda xato yoki yashirin nuqson topilgan bo'lsa, yangi narxni kiriting.</p>
+  <div class="field"><label for="mpVal">Yangi narx, so'm</label><input class="inp" id="mpVal" inputmode="numeric" value="${sum(cur)}"></div>
+  <div class="field"><label for="mpWhy">Sababi *</label><textarea class="inp" id="mpWhy" style="min-height:70px" placeholder="Masalan: ekran almashtirilgan ekan, Face ID ishlamaydi">${esc(W.manual?.reason || "")}</textarea></div>
+  <div id="mpErr" class="err hidden"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn sec" data-act="mpNo">Bekor qilish</button><button class="btn pri" data-act="mpOk">Saqlash</button></div>`);
+}
 const ourStock = () => S.stock.find(s => s.id === W.stockId && s.status === "sotuvda");
 const diffUzs = () => { const s = ourStock(), c = clientCalc(); return s && c ? toUzs(s.sellUsd) - c.uzs : 0; };
 
@@ -579,6 +646,7 @@ function renderWizard() {
   const el = $("#page");
   let h = `<div class="stepper">${STEPS.map((s, i) => `<div class="st ${i === W.step ? "on" : ""} ${i < W.step ? "done" : ""}"><div class="c">${i < W.step ? "✓" : i + 1}</div>${s}</div>`).join("")}</div>`;
   const c = clientCalc();
+  if (W.arizaId && W.step === 0) h += `<div class="note">Mijoz arizasi №${esc(W.arizaNo)} asosida to'ldirildi. Telefonni ko'zdan kechirib, javoblarni tekshiring.</div>`;
   if (W.step === 0) h += W.q < SUMMARY ? questionHtml() : summaryHtml();
   if (W.step === 1) h += hero("⇄", "Bizning telefonni tanlang", "Barcha filiallardagi sotuvdagi telefonlar") + `<div style="display:flex;gap:8px;margin-bottom:12px"><input class="inp" id="q2" placeholder="Qidirish: model, xotira yoki rang" value="${esc(W.q2)}"><button class="btn sec" data-act="reloadStock" title="Yangilash">↻</button></div><div class="grid" id="stockGrid"></div><div id="compare"></div>`;
   if (W.step === 2) {
@@ -614,11 +682,11 @@ function questionHtml() {
   if (Q.k === "brand") { const brands = [...new Set(S.models.map(x => x.brand))]; h += `<div class="olist">${brands.map(b => `<button class="opt ${W.brand === b ? "on" : ""}" data-ans="brand" data-v="${esc(b)}">${esc(b)}<small>${S.models.filter(x => x.brand === b).length} ta model</small></button>`).join("")}</div>`; }
   else if (Q.k === "model") h += `<input class="inp" id="mq" placeholder="Model nomini yozing, masalan 13 Pro" value="${esc(W.mq)}" autocomplete="off"><div class="mlist" id="mlist"></div>`;
   else if (Q.k === "mem") h += `<p class="qhint">${esc(m.brand)} ${esc(m.name)}</p><div class="ogrid">${m.mems.map(x => `<button class="opt ${W.mem === x ? "on" : ""}" data-ans="mem" data-v="${esc(x)}">${esc(x)}</button>`).join("")}</div>`;
-  else if (Q.k === "color") { const cols = colorsOf(m); h += `<p class="qhint">${esc(m.brand)} ${esc(m.name)}</p><div class="ogrid">${cols.map(c => `<button class="opt ${W.color === c ? "on" : ""}" data-ans="color" data-v="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+  else if (Q.k === "color") { const cols = colorsOf(m); h += `<p class="qhint">${esc(m.brand)} ${esc(m.name)}</p><div class="ogrid">${cols.map(c => `<button class="opt ${W.color === c ? "on" : ""}" data-ans="color" data-v="${esc(c)}">${esc(colorUz(c))}</button>`).join("")}</div>
     <div style="display:flex;gap:8px;margin-top:14px"><input class="inp" id="colorTxt" placeholder="Ro'yxatda yo'q bo'lsa, yozing" value="${esc(cols.includes(W.color) ? "" : W.color)}"><button class="btn sec" data-act="colorOk">Davom etish</button></div>
     <button class="qback" style="margin-top:10px" data-act="colorSkip">Rangsiz davom etish</button>`; }
   else if (Q.k === "batt") h += `<div class="bigin"><input type="range" class="rng" id="battR" min="50" max="100" value="${W.batt}" style="--p:${((W.batt - 50) / 50 * 100).toFixed(1)}%"><label class="bv"><input type="number" id="battN" min="1" max="100" value="${W.batt}"><span>%</span></label></div><button class="btn pri block" style="margin-top:14px" data-act="battOk">Davom etish</button>`;
-  else if (Q.k === "cyc") h += `<div class="bigin"><label class="bv"><input type="number" id="cycN" min="0" max="5000" inputmode="numeric" value="${W.cyc ?? ""}" placeholder="0"><span>sikl</span></label></div><button class="btn pri block" style="margin-top:14px" data-act="cycOk">Davom etish</button>`;
+  else if (Q.k === "cyc") h += `<div class="bigin"><label class="bv"><input type="number" id="cycN" min="0" max="5000" inputmode="numeric" value="${W.cyc ?? ""}" placeholder="0"><span>sikl</span></label></div><button class="btn pri block" style="margin-top:14px" data-act="cycOk">Davom etish</button><button class="btn sec block" style="margin-top:10px" data-act="cycSkip">O'tkazib yuborish</button>`;
   else if (Q.k === "screen" || Q.k === "body") {
     h += `<div class="vcards">${S.settings.pts[Q.k].map(o => `<button class="vcard ${W[Q.k] === o.v ? "on" : ""}" data-ans="${Q.k}" data-v="${o.v}">
       <span class="vimg">${condSvg(Q.k, o.v)}</span>
@@ -635,21 +703,24 @@ function renderModelList() {
 function summaryHtml() {
   const c = clientCalc(), m = curModel();
   let h = `${W.hist.length ? `<button class="qback" data-act="qback">← Orqaga</button>` : ""}` + hero("✆", "Telefon baholash", "Mijozning telefoni") + `
-  <div class="field"><span class="lbl">Mahsulot</span><div class="ro">B/U ${esc(m.brand)} ${esc(m.name)} ${esc(W.mem)}${W.color ? " " + esc(W.color) : ""}</div></div>
-  <div class="field"><label for="imei">IMEI</label><input class="inp" id="imei" inputmode="numeric" maxlength="15" value="${esc(W.imei)}" placeholder="*#06# terib bilib olinadi"></div>
+  <div class="field"><span class="lbl">Mahsulot</span><div class="ro">B/U ${esc(m.brand)} ${esc(m.name)} ${esc(W.mem)}${W.color ? " " + esc(colorUz(W.color)) : ""}</div></div>
   <button class="qback" data-act="redo">Javoblarni qaytadan ko'rib chiqish</button>`;
   if (c.rejected) return h + `<div class="err">Telefon iCloud / Google akkauntga bog'langan — qabul qilinmaydi. Mijozdan akkauntdan chiqishni so'rang.</div>`;
   if (c.parts) h += `<div class="note">Telefon yoqilmaydi — faqat ehtiyot qism sifatida baholandi.</div>`;
   else h += `<div class="extra"><div><span class="t">Qutisi</span><span class="pill">${W.box === "no" ? "Yo'q" : "Bor"}</span></div><div><span class="t">Shikast</span><span class="pill">${esc(gradeName(c.gi))}</span></div><div><span class="t">Batareya</span><span class="pill">${W.batt}%${hasCycles(m) && W.cyc != null ? " · " + W.cyc + " sikl" : ""}</span></div></div>
-    <div class="ptsbox"><div style="display:flex;justify-content:space-between"><b>Shikast ballari</b><b>${c.points} ball</b></div><ul>${c.lines.length ? c.lines.map(l => `<li><span>${esc(l[0])}</span><span>+${l[1]}</span></li>`).join("") : "<li><span>Nuqson topilmadi</span><span>0</span></li>"}</ul>
+    <div class="ptsbox"><div style="display:flex;justify-content:space-between"><b>Nuqsonlar</b><b>${c.points ? "−" + c.points + "%" : ""}</b></div><ul>${c.lines.length ? c.lines.map(l => `<li><span>${esc(l[0])}</span><span>−${l[1]}%</span></li>`).join("") : "<li><span>Nuqson topilmadi</span><span>0</span></li>"}</ul>
+    ${c.adj?.length ? `<div style="margin-top:8px"><b>Batareya ta'siri</b></div><ul>${c.adj.map(l => `<li><span>${esc(l[0])}</span><span>−${l[1]}%</span></li>`).join("")}</ul>` : ""}
     <div class="scale">${S.settings.grades.map((g, i) => `<div class="${i === c.gi ? "on" : ""}">${esc(gradeName(i))}</div>`).join("")}</div></div>`;
-  return h + `<div class="price"><div class="price-top"><div class="ic">$</div><div><small>Hisoblangan narx</small><b>Trade-in qiymati</b></div><span class="usd">${usd(c.usd)}</span></div><div class="total"><span>Jami:</span><b>${sum(c.uzs)}</b></div></div>`;
+  return h + `<div class="price"><div class="price-top"><div class="ic">$</div><div><small>${c.manual ? "Qo'lda o'zgartirilgan narx" : "Hisoblangan narx"}</small><b>Trade-in qiymati</b></div><span class="usd">${usd(c.usd)}</span></div><div class="total"><span>Jami:</span><b>${sum(c.uzs)}</b></div></div>
+  ${c.manual ? `<div class="note">Narx qo'lda o'zgartirildi. Hisoblangan: <b>${uzs(c.autoUzs)}</b> → yangi: <b>${uzs(c.uzs)}</b>.<br>Sabab: ${esc(W.manual.reason)}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec sm" data-act="manualPrice">✎ Narxni o'zgartirish</button><button class="btn sec sm" data-act="manualReset">Hisoblangan narxga qaytarish</button></div>`
+    : `<button class="btn sec sm" style="margin-top:12px" data-act="manualPrice">✎ Narxni qo'lda o'zgartirish</button>`}`;
 }
 function renderStockGrid() {
   const q = W.q2.trim().toLowerCase(), match = s => s.status === "sotuvda" && (!q || `${s.modelName} ${s.mem} ${s.color}`.toLowerCase().includes(q));
   const mine = S.stock.filter(match), other = S.stockAll.filter(s => s.branchId !== S.me.branchId && match(s));
-  const card = s => `<button class="card ${W.stockId === s.id ? "on" : ""}" data-stock="${s.id}"><b>${esc(s.modelName)} <span class="badge ${esc(s.grade)}">${esc(s.grade)}</span></b><span class="m">${esc(s.mem || "")}${s.color ? ", " + esc(s.color) : ""}${s.battery ? ", " + s.battery + "%" : ""}</span><span class="p">${uzs(toUzs(s.sellUsd))}</span></button>`;
-  const ocard = s => `<div class="card other" title="Ro'yxat admin panel orqali yangilanadi"><b>${esc(s.modelName)} <span class="badge ${esc(s.grade)}">${esc(s.grade)}</span></b><span class="m">${esc(s.mem || "")}${s.color ? ", " + esc(s.color) : ""}${s.battery ? ", " + s.battery + "%" : ""}</span><span class="p">${uzs(toUzs(s.sellUsd))}</span><span class="badge gold" style="align-self:flex-start;margin-top:4px">${esc(bName(s.branchId))}</span><span class="m">Adminga qo'ng'iroq qiling — telefonni filialingizga ko'chirib beradi</span></div>`;
+  const card = s => `<button class="card ${W.stockId === s.id ? "on" : ""}" data-stock="${s.id}"><b>${esc(s.modelName)} <span class="badge ${esc(s.grade)}">${esc(s.grade)}</span></b><span class="m">${esc(s.mem || "")}${s.color ? ", " + esc(colorUz(s.color)) : ""}${s.battery ? ", " + s.battery + "%" : ""}</span><span class="p">${uzs(toUzs(s.sellUsd))}</span></button>`;
+  const ocard = s => `<div class="card other" title="Ro'yxat admin panel orqali yangilanadi"><b>${esc(s.modelName)} <span class="badge ${esc(s.grade)}">${esc(s.grade)}</span></b><span class="m">${esc(s.mem || "")}${s.color ? ", " + esc(colorUz(s.color)) : ""}${s.battery ? ", " + s.battery + "%" : ""}</span><span class="p">${uzs(toUzs(s.sellUsd))}</span><span class="badge gold" style="align-self:flex-start;margin-top:4px">${esc(bName(s.branchId))}</span><span class="m">Adminga qo'ng'iroq qiling — telefonni filialingizga ko'chirib beradi</span></div>`;
   $("#stockGrid").innerHTML = `<h3 style="margin-top:0;grid-column:1/-1">${esc(S.branch.name)} (sizning filialingiz)</h3>` +
     (mine.length ? mine.map(card).join("") : `<div class="empty" style="grid-column:1/-1">Filialingizda sotuvdagi telefon yo'q.</div>`) +
     (other.length ? `<h3 style="grid-column:1/-1">Boshqa filiallarda</h3>` + other.map(ocard).join("") : "");
@@ -682,6 +753,7 @@ function answer(k, v) {
   if (k === "model") { if (W.modelId !== v) { W.mem = null; W.color = ""; } W.modelId = v; } else W[k] = v;
   let next = W.q + 1; while (QS[next] && QS[next].cond && !QS[next].cond()) next++;
   if ((k === "power" && v === "no") || (k === "lock" && v === "on")) next = SUMMARY;
+  W.manual = null;   // javob o'zgarsa, qo'lda kiritilgan narx bekor bo'ladi
   W.hist.push(W.q); W.q = next; renderWizard(); window.scrollTo(0, 0);
 }
 function renderDone() {
@@ -721,13 +793,14 @@ async function saveDeal() {
     b.set(dealRef, {
       branchId: S.me.branchId, sellerId: S.me.id, sellerName: S.me.fullName || "", client, contractNo,
       device: {modelId: m.id, brand: m.brand, name: m.name, mem: W.mem, color: W.color, imei: digits(W.imei), answers: answers(),
-               calc: {usd: c.usd, uzs: c.uzs, points: c.points, grade: c.grade, gradeLetter: c.gradeLetter}},
+               calc: {usd: c.usd, uzs: c.uzs, points: c.points, grade: c.grade, gradeLetter: c.gradeLetter, fv: 5},
+               ...(c.manual ? {manual: {uzs: c.uzs, autoUzs: c.autoUzs, reason: W.manual.reason, by: S.me.id, byName: S.me.fullName || ""}} : {})},
       deviceUsd: c.usd, deviceUzs: c.uzs, stockId: st.id, ourModel: `${st.modelName} ${st.mem || ""}`.trim(), ourUsd: st.sellUsd, ourUzs: our,
       diffUzs: diff, months, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0, kurs, newStockId: newRef.id, photoCount,
       schedule: p ? schedule(p, months) : [], createdAt: serverTimestamp()});
     b.update(doc(db, "stock", st.id), {status: "sotilgan", sold: {kind: "deal", ref: dealRef.id, at: serverTimestamp(), clientName: client.name, priceUzs: our}, updatedAt: serverTimestamp()});
     b.set(newRef, {branchId: S.me.branchId, modelName: m.name, brand: m.brand, mem: W.mem, color: W.color, imei: digits(W.imei), grade: c.gradeLetter || "D",
-      battery: W.batt, buyUsd: c.usd, sellUsd: c.sellUsd, status: "tayyorlanmoqda", source: "trade-in", sourceDealId: dealRef.id,
+      battery: W.batt, cyc: hasCycles(m) && W.cyc != null ? W.cyc : null, box: W.box || "", buyUsd: c.usd, sellUsd: c.sellUsd, status: "tayyorlanmoqda", source: "trade-in", sourceDealId: dealRef.id,
       createdBy: S.me.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp()});
     await b.commit();
     // Rasmlar — shartnomadan keyin, alohida
@@ -736,6 +809,8 @@ async function saveDeal() {
       try { await setDoc(doc(collection(db, "photos")), {dealId: dealRef.id, branchId: S.me.branchId, slot: +slot, label: PHOTO_SLOTS[slot], data, createdBy: S.me.id, createdAt: serverTimestamp()}); }
       catch { photoErr++; }
     }
+    // Shartnoma mijoz arizasidan boshlangan bo'lsa — arizani yopish
+    if (W.arizaId) { try { await setArzStatus(W.arizaId, "yakunlandi", {dealId: dealRef.id}); } catch (e) { console.warn("ariza", e); } }
     W.done = {client: client.name, gave: `${m.name} ${W.mem}`, took: `${st.modelName} ${st.mem || ""}`, diff, months, monthly: p?.monthly, photoErr};
     W.saving = false; await loadAll(); renderWizard(); toast("Shartnoma saqlandi");
   } catch (e) {
@@ -771,12 +846,12 @@ function renderStock() {
   $("#page").innerHTML = hero("▣", "Ombor", S.stockScope === "mine" ? `${esc(S.branch.name)} filiali` : "Barcha filiallar") + `
   <div class="chips">${[["mine", "Mening filialim"], ["all", "Barcha filiallar"]].map(([k, l]) => `<button class="chip ${S.stockScope === k ? "on" : ""}" data-scope="${k}">${l}</button>`).join("")}</div>
   <div class="chips">${[["sotuvda", "Sotuvda"], ["tayyorlanmoqda", "Tayyorlanmoqda"], ["sotilgan", "Sotilgan"]].map(([k, l]) => `<button class="chip ${S.stockFilter === k ? "on" : ""}" data-sf="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
-  <input class="inp" id="stockQ" placeholder="Qidirish: model, rang yoki IMEI" value="${esc(S.stockQ)}" style="margin-bottom:12px">
+  <input class="inp" id="stockQ" placeholder="Qidirish: model yoki rang" value="${esc(S.stockQ)}" style="margin-bottom:12px">
   <div id="stockList">${stockListHtml(stockItems())}</div>`;
 }
 function stockListHtml(items) {
-  return items.length ? items.map(s => `<div class="item"><div><b>${esc(s.modelName)}</b> <span class="badge ${esc(s.grade)}">${esc(s.grade)}</span>
-    <div class="src">${esc(s.mem || "")}${s.color ? ", " + esc(s.color) : ""}${s.battery ? ", batareya " + s.battery + "%" : ""}${s.imei ? ", IMEI " + esc(s.imei) : ""}</div>
+  return items.length ? items.map(s => `<div class="item"><div><b>${esc(s.modelName)}</b> <span class="badge ${s.cond === "yangi" ? "ok" : "grey"}">${s.cond === "yangi" ? "Yangi" : "B/U"}</span> <span class="badge ${esc(s.grade)}">${esc(s.grade)}</span>
+    <div class="src">${esc(s.mem || "")}${s.color ? ", " + esc(colorUz(s.color)) : ""}${s.battery ? ", batareya " + s.battery + "%" : ""}</div>
     <div class="src">${s.other ? "Boshqa filial" : `Tannarx: ${uzs(toUzs(s.buyUsd))}`}${s.status === "sotilgan" && s.sold ? ` · Sotildi ${fdt(s.sold.at)}, ${esc(s.sold.clientName || "")}` : ""}</div>
     ${s.branchId !== S.me.branchId ? `<div><span class="badge gold">${esc(bName(s.branchId))}</span></div>` : ""}</div>
     <div style="text-align:right"><div class="p">${uzs(s.status === "sotilgan" && s.sold?.priceUzs ? s.sold.priceUzs : toUzs(s.sellUsd))}</div>
@@ -790,7 +865,7 @@ function openSale(id) {
 }
 function renderSale() {
   const s = S.stock.find(x => x.id === SALE.id);
-  modal(`<h2>Telefonni sotish</h2><p class="hint" style="margin-top:0">${esc(s.modelName)} ${esc(s.mem || "")}${s.color ? ", " + esc(s.color) : ""}</p>
+  modal(`<h2>Telefonni sotish</h2><p class="hint" style="margin-top:0">${esc(s.modelName)} ${esc(s.mem || "")}${s.color ? ", " + esc(colorUz(s.color)) : ""}</p>
   <div class="field"><label for="slPrice">Sotuv narxi, so'm</label><input class="inp" id="slPrice" type="number" inputmode="numeric" value="${SALE.price}"><div class="hint">Tannarx: ${uzs(SALE.min)}. Undan arzon sotib bo'lmaydi.</div></div>
   <div class="chips">${[["naqd", "Naqd"], ["nasiya", "Nasiya"]].map(([k, l]) => `<button class="chip ${SALE.type === k ? "on" : ""}" data-slt="${k}">${l}</button>`).join("")}</div>
   ${SALE.type === "nasiya" ? `${sliderHtml("slRange", SALE.months)}<div id="slPlan" style="margin-top:10px">${salePlanHtml()}</div>` : ""}
@@ -833,8 +908,440 @@ function renderDeals() {
       <div class="src" style="margin-top:6px">${x._k === "deal" ? `Topshirdi: ${esc(x.device?.name)} ${esc(x.device?.mem)} (${uzs(x.deviceUzs)}) → Oldi: ${esc(x.ourModel)} (${uzs(x.ourUzs)})` : `${esc(x.phoneName)} — ${uzs(x.priceUzs)}`}</div>
       ${x.months ? `<div style="margin-top:6px"><b>${uzs(x.monthlyUzs)} × ${x.months} oy</b> <span class="badge ${paid === sch.length ? "ok" : "grey"}">${paid}/${sch.length} to'langan</span></div>
       <details><summary>To'lov jadvali</summary><div class="tw" style="margin-top:8px"><table><thead><tr><th>Oy</th><th>Sana</th><th>Summa</th><th>Holat</th></tr></thead><tbody>${sch.map(y => `<tr><td>${y.n}</td><td>${y.due.split("-").reverse().join(".")}</td><td>${uzs(y.amount)}</td><td>${y.paid ? '<span class="badge ok">To\'landi</span>' : y.due < isoDate(new Date()) ? '<span class="badge bad">Kechikkan</span>' : '<span class="badge grey">Kutilmoqda</span>'}</td></tr>`).join("")}</tbody></table></div></details>` : ""}
-    </div>`;
+    <div style="margin-top:8px"><button class="btn sec sm" data-scontract="${x._k}|${x.id}">📄 Shartnoma</button></div></div>`;
   }).join("") : `<div class="empty">Hali shartnoma yo'q.</div>`);
+}
+
+/* ================= MIJOZ ARIZALARI =================
+   Mijozlar mijoz.html sahifasida telefonini baholab ariza qoldiradi.
+   Sotuvchi qo'ng'iroq qiladi va arizadagi javoblar bilan trade-in'ni boshlaydi. */
+const ARZ_ST = {yangi: ["Yangi", "gold"], aloqa: ["Bog'lanildi", ""], olindi: ["Sotib olindi", "ok"], sotuvda: ["Sotuvga chiqarildi", "ok"], yakunlandi: ["Yakunlandi", "ok"], bekor: ["Bekor qilindi", "grey"]};
+const fmtPhone = p => { const d = digits(p); return d.length === 12 ? `+${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}` : d ? "+" + d : ""; };
+function updArzBadge() { const n = S.arizalar.filter(a => a.status === "yangi").length, e = $("#arzCnt"); e.textContent = n; e.classList.toggle("hidden", !n); }
+function arzCard(x) {
+  const [stL, stC] = ARZ_ST[x.status] || [x.status || "—", "grey"], d = x.device || {}, tel = digits(x.client?.phone);
+  const pay = !x.ourModel ? "Telefonini sotmoqchi" : x.diffUzs <= 0 ? `Mijozga qaytariladi: ${uzs(-x.diffUzs)}` : x.payType === "nasiya" ? `Nasiya: ${uzs(x.monthlyUzs)} × ${x.months} oy` : `Naqd qo'shib to'laydi: ${uzs(x.diffUzs)}`;
+  return `<div class="item" style="display:block${x.status === "yangi" ? ";border-left:5px solid var(--y)" : ""}"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+    <div><span class="badge ${stC}">${esc(stL)}</span>${!x.ourModel ? ' <span class="badge bad">Sotish</span>' : ""} <b>${esc(x.client?.name)}</b></div><span class="src">№${esc(x.no || x.id.slice(0, 6).toUpperCase())} · ${fdt(x.createdAt)}</span></div>
+    <div style="margin-top:6px"><a href="tel:+${esc(tel)}" style="font-weight:700;color:var(--g);font-size:17px">${esc(fmtPhone(tel))}</a></div>
+    <div class="src" style="margin-top:6px">Topshiradi: <b>${esc(d.name)} ${esc(d.mem)}</b>${d.color ? ", " + esc(d.color) : ""}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""} — taxminan ${x.manualUzs ? `<s>${uzs(x.deviceUzs)}</s> <b>${uzs(x.manualUzs)}</b> (admin: ${esc(x.manualReason || "")})` : uzs(x.deviceUzs)}${d.askUzs ? ` · <b>mijoz narxi: ${uzs(d.askUzs)}</b>` : ""}</div>
+    <div class="src">Olmoqchi: <b>${x.ourModel ? esc(x.ourModel) + " (" + uzs(x.ourUzs) + ")" : "tanlamagan"}</b> · ${esc(pay)}</div>
+    ${x.note ? `<div class="note" style="margin:8px 0 0">Izoh: ${esc(x.note)}</div>` : ""}${buyInfoHtml(x)}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+      ${buyButtonsHtml(x)}
+      ${["yakunlandi", "bekor"].includes(x.status) || (isSellAriza(x) && ["olindi", "sotuvda"].includes(x.status)) ? "" : `<button class="btn ${isSellAriza(x) ? "sec" : "pri"} sm" data-arzgo="${x.id}">Trade-in'ni boshlash</button>`}
+      ${x.status === "yangi" ? `<button class="btn sec sm" data-arz="${x.id}|aloqa">Bog'lanildi</button>` : ""}
+      ${["olindi", "sotuvda"].includes(x.status) ? "" : x.status !== "bekor" && x.status !== "yakunlandi" ? `<button class="btn sec sm" style="color:var(--bad)" data-arz="${x.id}|bekor">Bekor qilish</button>` : `<button class="btn sec sm" data-arz="${x.id}|aloqa">Qayta ochish</button>`}
+    </div></div>`;
+}
+const IS_ADMIN = false;
+// Shartnoma ish olib borilayotgan filial firmasi nomidan tuziladi
+const reqBranches = () => S.branch?.req?.firm ? [S.branch] : [];
+/* ================= SOTISH MUROJAATI: SOTIB OLISH VA SOTUVGA CHIQARISH =================
+   Mijoz telefonini sotmoqchi bo'lsa (arizada yangi telefon yo'q): "Sotib olindi" — narx va 6 ta rasm,
+   keyin "Sotuvga chiqarildi" — sotuv narxi bilan omborga "Sotuvda" holatida qo'shiladi.
+   Rasmlar "photos" to'plamiga (arizaId bilan) yoziladi; ruxsat bo'lmasa ariza ichiga saqlanadi. */
+const BUY_SLOTS = ["Old tomoni", "Orqa tomoni", "Tepasi", "Tagi", "Chap yon tomoni", "O'ng yon tomoni"];
+const PASS_SLOT = 6, PASS_LABEL = "Pasport rasmi"; // pasport rasmi — 7-rasm sifatida saqlanadi
+const slotLabel = (slot, label) => BUY_SLOTS[slot] || (slot === PASS_SLOT ? PASS_LABEL : label || "");
+let BUY = null;
+// Bo'sh katakdagi yo'riqnoma chizmasi: telefonning qaysi tomonini suratga olish kerakligi (sariq — shu tomon)
+const Y = "#E8B921", L = "#9AA8C2", F = "#EEF2F8";
+function guideSvg(i) {
+  const body = (x, y, w, h, r, hl) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${F}" stroke="${hl ? Y : L}" stroke-width="${hl ? 5 : 3}"/>`;
+  const btn = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="${L}"/>`;
+  const parts = [
+    // 0 Old tomoni: ekran va Dynamic Island
+    body(30, 12, 60, 116, 12, 1) + `<rect x="36" y="18" width="48" height="104" rx="8" fill="#DCE4F2"/><rect x="50" y="23" width="20" height="6" rx="3" fill="${L}"/>`,
+    // 1 Orqa tomoni: kamera bloki
+    body(30, 12, 60, 116, 12, 1) + `<rect x="36" y="18" width="26" height="26" rx="7" fill="#DCE4F2" stroke="${L}" stroke-width="2"/><circle cx="44" cy="26" r="4.5" fill="${L}"/><circle cx="54" cy="36" r="4.5" fill="${L}"/><circle cx="44" cy="37" r="3" fill="${L}"/><circle cx="60" cy="78" r="6" fill="none" stroke="${L}" stroke-width="2"/>`,
+    // 2 Tepasi: telefon yuqoridan, ustki qirra belgilangan
+    body(30, 30, 60, 98, 12, 0) + `<rect x="34" y="12" width="52" height="10" rx="5" fill="${F}" stroke="${Y}" stroke-width="4"/><rect x="54" y="15" width="12" height="4" rx="2" fill="${L}"/>`,
+    // 3 Tagi: zaryadlash porti va dinamik teshiklari
+    body(30, 12, 60, 98, 12, 0) + `<rect x="34" y="118" width="52" height="10" rx="5" fill="${F}" stroke="${Y}" stroke-width="4"/><rect x="54" y="121" width="12" height="4" rx="2" fill="${L}"/>${[40, 44, 48, 72, 76, 80].map(x => `<circle cx="${x}" cy="123" r="1.3" fill="${L}"/>`).join("")}`,
+    // 4 Chap yon tomoni: ovoz tugmalari
+    `<rect x="48" y="12" width="24" height="116" rx="10" fill="${F}" stroke="${Y}" stroke-width="5"/>` + btn(44, 30, 4, 10) + btn(44, 46, 4, 16) + btn(44, 66, 4, 16),
+    // 5 O'ng yon tomoni: quvvat tugmasi
+    `<rect x="48" y="12" width="24" height="116" rx="10" fill="${F}" stroke="${Y}" stroke-width="5"/>` + btn(72, 40, 4, 24)
+  ];
+  return `<svg class="guide" viewBox="0 0 120 140" aria-hidden="true">${parts[i]}</svg>`;
+}
+const isSellAriza = x => !x.ourModel;
+function buyInfoHtml(x) {
+  const b = x.bought, l = x.listed;
+  if (!b) return "";
+  return `<div class="note" style="margin:8px 0 0"><b>Sotib olindi:</b> ${uzs(b.priceUzs)}${b.byName ? ` · ${esc(b.byName)}` : ""}${b.at ? ` · ${fdt(b.at)}` : ""}
+    ${b.imei || b.passport ? `<br>IMEI: <b>${esc(b.imei || "—")}</b> · Pasport: <b>${esc(b.passport || "—")}</b>` : ""}
+    ${l ? `<br><b>Sotuvga chiqarildi:</b> ${uzs(l.sellUzs)}${l.byName ? ` · ${esc(l.byName)}` : ""}` : ""}
+    <br><button class="btn sec sm" style="margin-top:6px" data-bphotos="${x.id}">📷 Rasmlar (${b.photoCount || 6})</button> <button class="btn sec sm" style="margin-top:6px" data-bcontract="${x.id}">📄 Shartnoma</button></div>`;
+}
+function buyButtonsHtml(x) {
+  // Sotish murojaatida ham, almashtirish (trade-in) arizasida ham mijoz telefoni sotib olinadi
+  if (x.status === "bekor" || x.status === "yakunlandi") return "";
+  if (!x.bought) return `<button class="btn green sm" style="flex:none" data-buy="${x.id}">✓ ${isSellAriza(x) ? "Sotib olindi" : "Mijoz telefoni sotib olindi"}</button>`;
+  // Almashtirishda: mijoz telefoni olingach — bizning telefon sotiladi (shartnoma shu yerda tuziladi)
+  if (!isSellAriza(x)) return x.dealId ? "" : `<button class="btn green sm" style="flex:none" data-sold="${x.id}">✓ Bizning telefon sotildi</button>`;
+  if (!x.listed) return `<button class="btn pri sm" data-list="${x.id}">Sotuvga chiqarildi</button>`;
+  return "";
+}
+function shrinkPhoto(file) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 900 / Math.max(img.naturalWidth, img.naturalHeight)), w = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k);
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h; cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      let q = 0.75, out = cv.toDataURL("image/jpeg", q);
+      while (out.length > 110000 && q > 0.3) { q -= 0.1; out = cv.toDataURL("image/jpeg", q); }
+      URL.revokeObjectURL(url); res(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Rasmni o'qib bo'lmadi")); };
+    img.src = url;
+  });
+}
+/* ---- "Sotib olindi": 3 bosqich — 1) tekshiruv belgilari, 2) narx, IMEI, pasport va rasmlar, 3) shartnoma ---- */
+const BUY_CHECKS = [
+  ["sbros", "Sbros berildi: iPhone mijozning iCloud'idan chiqarildi"],
+  ["uzimei", "UZIMEI va MDM tizimidan o'tganligi tekshirildi"],
+  ["vakuum", "Vakuumdagi telefon ishlatilmaganligi Apple saytida tekshirildi", c => c.cond === "yangi"],
+  ["agreed", "Mijoz bilan narx kelishildi"]];
+const kursUzs = u => Math.round((u || 0) * S.settings.kurs / 1000) * 1000;
+const buyBackUsd = x => BUY.chk.back === "none" ? Shartnoma.backCoverUsd(x.device?.name) : 0;
+const buyBase = x => x.manualUzs || x.deviceUzs || 0;
+const buyStep1Ok = () => !!BUY.chk.back && BUY_CHECKS.every(([k, , need]) => (need && !need(BUY.chk)) || BUY.chk[k]);
+// Shartnoma qaysi filial firmasi nomidan tuziladi: ariza filiali yoki tanlangan filial
+const buyReqBranches = () => reqBranches();
+function renderBuyModal() {
+  const x = S.arizalar.find(a => a.id === BUY.id), d = x.device || {}, c = BUY.chk;
+  const info = `<p class="src" style="margin:0 0 10px">${esc(d.name || "")} ${esc(d.mem || "")}${d.color ? ", " + esc(d.color) : ""} · ${esc(x.client?.name || "")} · taxminiy baho ${uzs(buyBase(x))}</p>`;
+  if (BUY.step === 1) {
+    const backUsd = Shartnoma.backCoverUsd(d.name);
+    modal(`<h2>Telefon sotib olindi — 1/3: tekshiruv</h2>${info}
+    <div class="lbl" style="margin-bottom:6px">Telefon holati</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px"><button class="btn sm ${c.cond === "bu" ? "pri" : "sec"}" data-bcond="bu">B/U</button><button class="btn sm ${c.cond === "yangi" ? "pri" : "sec"}" data-bcond="yangi">Yangi (vakuumda)</button></div>
+    ${BUY_CHECKS.filter(([, , need]) => !need || need(c)).map(([k, t]) => `<label class="bchk"><input type="checkbox" data-bchk="${k}" ${c[k] ? "checked" : ""}> <span>${esc(t)}</span></label>`).join("")}
+    <div class="lbl" style="margin:12px 0 6px">Orqa qopqog'i</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm ${c.back === "ok" ? "pri" : "sec"}" data-bback="ok">Joyida</button><button class="btn sm ${c.back === "none" ? "bad" : "sec"}" data-bback="none">Yo'q${backUsd ? ` (narxdan −$${backUsd})` : ""}</button></div>
+    <div id="bErr" class="err hidden"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap"><button class="btn sec" id="bNo">Bekor qilish</button><button class="btn pri" id="bNext" ${buyStep1Ok() ? "" : "disabled"}>Keyingi →</button></div>`, true);
+    return;
+  }
+  if (BUY.step === 3) {
+    modal(`<h2>Telefon sotib olindi — 3/3: shartnoma</h2>${info}
+    <div class="note" style="margin:0 0 12px">✅ Ma'lumotlar va rasmlar bazaga saqlandi. Shartnomani chop eting va mijozga imzolating (ikki nusxa).</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn sec" id="bNo">Yopish</button><button class="btn pri" data-bcontract="${x.id}">📄 Shartnomani ochish</button></div>`);
+    return;
+  }
+  const done = BUY.photos.slice(0, 6).filter(Boolean).length, backUsd = buyBackUsd(x), rb = buyReqBranches();
+  modal(`<h2>Telefon sotib olindi — 2/3: ma'lumotlar</h2>${info}
+  ${backUsd ? `<div class="note" style="margin:0 0 10px">Orqa qopqog'i yo'q: narxdan <b>−$${backUsd}</b> (${uzs(kursUzs(backUsd))}) ayirildi.</div>` : ""}
+  <div class="field"><label for="bPrice">Nech pulga olindi, so'm *</label><input class="inp" id="bPrice" inputmode="numeric" value="${BUY.price ? sum(BUY.price) : ""}"></div>
+  <div class="row2"><div class="field"><label for="bImei">IMEI *</label><input class="inp" id="bImei" inputmode="numeric" placeholder="*#06# terib bilib olinadi" value="${esc(BUY.imei)}"></div>
+    <div class="field"><label for="bPass">Mijoz pasporti *</label><input class="inp" id="bPass" placeholder="AA1234567" value="${esc(BUY.pass)}" style="text-transform:uppercase"></div></div>
+  ${rb.length > 1 ? `<div class="field"><label for="bReq">Shartnoma qaysi filial nomidan *</label><select class="inp" id="bReq">${rb.map(b => `<option value="${b.id}" ${b.id === BUY.reqBranch ? "selected" : ""}>${esc(b.name)} — ${esc(b.req?.firm || "")}</option>`).join("")}</select></div>` : ""}
+  <div class="field"><label>Pasport rasmi *</label><label class="bph pass">${BUY.photos[PASS_SLOT] ? `<img src="${BUY.photos[PASS_SLOT]}" alt="">` : `<span class="pico">🪪</span><span class="cam">📷</span>`}<span class="lab">Pasportning rasmli sahifasi</span><input type="file" accept="image/*" capture="environment" data-bslot="${PASS_SLOT}"></label></div>
+  <div class="lbl" style="margin-bottom:6px">Telefon rasmlari * (<span id="bCnt">${done}</span>/6)</div>
+  <div class="bphotos">${BUY_SLOTS.map((l, i) => `<label class="bph">${BUY.photos[i] ? `<img src="${BUY.photos[i]}" alt="">` : guideSvg(i) + `<span class="cam">📷</span>`}<span class="lab">${esc(l)}</span><input type="file" accept="image/*" capture="environment" data-bslot="${i}"></label>`).join("")}</div>
+  <div id="bErr" class="err hidden"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap"><button class="btn sec" id="bBack" style="margin-right:auto">← Orqaga</button><button class="btn sec" id="bNo">Bekor qilish</button><button class="btn pri" id="bOk" ${BUY.saving ? "disabled" : ""}>${BUY.saving ? "Saqlanmoqda…" : "Saqlash va shartnoma →"}</button></div>`, true);
+}
+function buyGoStep2() {
+  const x = S.arizalar.find(a => a.id === BUY.id);
+  if (!buyStep1Ok()) return;
+  if (!BUY.priceTouched) BUY.price = Math.max(0, buyBase(x) - kursUzs(buyBackUsd(x)));
+  const rb = buyReqBranches();
+  if (!rb.some(b => b.id === BUY.reqBranch)) BUY.reqBranch = (rb.find(b => b.id === x.branchId) || rb[0])?.id || "";
+  BUY.step = 2; renderBuyModal();
+}
+async function saveBuy() {
+  const x = S.arizalar.find(a => a.id === BUY.id), er = $("#bErr");
+  const fail = t => { er.textContent = t; er.classList.remove("hidden"); };
+  if (!(BUY.price > 0)) return fail("Olingan narxni kiriting");
+  if (BUY.imei.length !== 15) return fail("IMEI 15 ta raqamdan iborat bo'lishi kerak");
+  if (!/^[A-Z]{2}\d{7}$/.test(BUY.pass)) return fail("Pasport seriya va raqamini yozing, masalan AA1234567");
+  if (!BUY.photos[PASS_SLOT]) return fail("Pasport rasmini biriktiring");
+  const miss = BUY_SLOTS.filter((_, i) => !BUY.photos[i]);
+  if (miss.length) return fail("Rasmlar yetishmayapti: " + miss.join(", "));
+  const rbr = buyReqBranches().find(b => b.id === BUY.reqBranch);
+  if (!rbr?.req?.firm) return fail("Shartnoma uchun filial rekvizitlari kiritilmagan. Admin Filiallar bo'limida rekvizitlarni to'ldirsin.");
+  BUY.saving = true; renderBuyModal();
+  try {
+    // Rasmlar alohida hujjatlarda; ruxsat bo'lmasa — ariza ichida
+    let embedded = null;
+    try {
+      for (let i = 0; i <= PASS_SLOT; i++) await setDoc(doc(collection(db, "photos")), {arizaId: x.id, branchId: x.branchId || S.me.branchId || "", slot: i, label: slotLabel(i), data: BUY.photos[i], createdBy: S.me.id, createdAt: serverTimestamp()});
+    } catch (e) { if (!String(e?.code || "").includes("permission")) throw e; embedded = BUY.photos.slice(); }
+    const c = BUY.chk, backUsd = buyBackUsd(x);
+    const bought = {priceUzs: BUY.price, imei: BUY.imei, passport: BUY.pass, at: serverTimestamp(), by: S.me.id, byName: S.me.fullName || "", photoCount: 7,
+      cond: c.cond, checks: {sbros: !!c.sbros, uzimei: !!c.uzimei, vakuum: c.cond === "yangi" ? !!c.vakuum : null, agreed: !!c.agreed}, backCover: c.back, backUsd,
+      // Shartnoma: rekvizitlar shu kundagi holatda saqlanadi (keyin rekvizit o'zgarsa ham eski shartnoma o'zgarmaydi)
+      contract: {no: x.no || x.id.slice(0, 6).toUpperCase(), branchId: rbr.id, req: rbr.req},
+      ...(embedded ? {photos: embedded} : {})};
+    await updateDoc(doc(db, "arizalar", x.id), {status: "olindi", bought, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: S.me.fullName || ""});
+    Object.assign(x, {status: "olindi", bought: {...bought, at: new Date()}}); renderArizalar(); toast("Sotib olindi deb saqlandi");
+    BUY.saving = false; BUY.step = 3; renderBuyModal();
+  } catch (e) { BUY.saving = false; renderBuyModal(); fail(errText(e)); }
+}
+// Shartnoma uchun telefon holati va nuqsonlar — baholash javoblaridan
+function buyCondText(x) {
+  const b = x.bought || {}, a = x.device?.answers || {}, g = x.device?.calc?.grade;
+  return [b.cond === "yangi" ? "Yangi" : "B/U", g, a.batt != null ? `batareya ${a.batt}%` : "", a.box === "no" ? "qutisiz" : a.box ? "qutisi bor" : ""].filter(Boolean).join(", ");
+}
+function buyDefects(x) {
+  const b = x.bought || {}, a = x.device?.answers || {}, pts = S.settings?.pts || {}, out = [];
+  for (const k of ["screen", "body", "bio", "cam", "repair"]) { const o = (pts[k] || []).find(o => o.v === a[k]); if (o && o.p) out.push(`${({screen: "ekran", body: "korpus", bio: "Face ID / Touch ID", cam: "kamera", repair: "ta'mir"})[k]}: ${o.label.toLowerCase()}`); }
+  if (a.batt != null && a.batt < 100) out.push(`batareya sig'imi ${a.batt}%`);
+  if (a.cyc != null && a.cyc !== "") out.push(`batareya sikli ${a.cyc}`);
+  if (a.box === "no") out.push("qutisi yo'q");
+  if (b.backCover === "none") out.push("orqa qopqog'i yo'q");
+  return out.join("; ");
+}
+function openBuyContract(id) {
+  const x = S.arizalar.find(a => a.id === id), b = x?.bought; if (!b) return;
+  withReq(b.contract?.branchId || x.branchId, b.contract?.req, req => buyContractWith(x, b, req));
+}
+function buyContractWith(x, b, req) {
+  const d = x.device || {};
+  Shartnoma.open(Shartnoma.buyHtml({no: b.contract?.no || x.no, date: b.at, req,
+    client: {name: x.client?.name, passport: b.passport, phone: fmtPhone(x.client?.phone)},
+    items: [{name: [d.name, d.mem, d.color].filter(Boolean).join(" "), cond: buyCondText(x), imei: b.imei, sum: b.priceUzs}],
+    defects: buyDefects(x), terms: S.settings.contract || {}}));
+}
+/* ---- Sotish shartnomasi: trade-in (deals) va oddiy sotuv (sales) ---- */
+// Savdo bo'lgan filialda rekvizit bo'lmasa (masalan Ofis), shartnoma qaysi firma nomidan ekanini so'raydi
+function withReq(branchId, saved, go) {
+  if (saved?.firm) return go(saved);
+  const list = reqBranches(), own = list.find(r => r.id === branchId);
+  if (own) return go(own.req);
+  if (!list.length) return toast("Filial rekvizitlari kiritilmagan. Admin → Filiallar bo'limida rekvizitlarni to'ldiring.", true);
+  if (list.length === 1) return go(list[0].req);
+  modal(`<h2>Shartnoma qaysi firma nomidan?</h2><p class="sub">Bu savdo bo'lgan filialda shartnoma rekvizitlari yo'q. Firmani tanlang.</p>
+  <div class="field"><select class="inp" id="wrSel">${list.map(b => `<option value="${b.id}">${esc(b.name)} — ${esc(b.req.firm)}</option>`).join("")}</select></div>
+  <div class="acts"><button class="btn sec" id="wrNo">Bekor qilish</button><button class="btn pri" id="wrOk">📄 Shartnomani ochish</button></div>`);
+  $("#wrNo").onclick = closeModal;
+  $("#wrOk").onclick = () => { const r = list.find(b => b.id === $("#wrSel").value).req; closeModal(); go(r); };
+}
+function openSellContract(kind, id) {
+  const isDeal = kind === "deal", x = (isDeal ? S.deals : S.sales).find(d => d.id === id); if (!x) return;
+  withReq(x.branchId, null, req => sellContractWith(isDeal, x, id, req));
+}
+function sellContractWith(isDeal, x, id, req) {
+  const st = S.stock.find(s => s.id === x.stockId) || {};
+  const sch = x.schedule || [], price = isDeal ? x.ourUzs : x.priceUzs, tradeUzs = isDeal ? x.deviceUzs : 0;
+  const dv = x.device || {};
+  Shartnoma.open(Shartnoma.sellHtml({no: x.contractNo || id.slice(0, 6).toUpperCase(), date: x.createdAt, req,
+    client: {name: /^Shartnoma №/.test(x.client?.name || "") ? "" : x.client?.name, passport: x.client?.passport, phone: x.client?.phone && x.client.phone !== "000000000" ? fmtPhone(x.client.phone) : "", address: x.client?.address},
+    item: {name: (isDeal ? x.ourModel : x.phoneName) + (st.color ? " " + st.color : ""), cond: [st.cond === "yangi" ? "Yangi" : "B/U", st.battery ? `batareya ${st.battery}%` : "", st.box === "no" ? "qutisiz" : st.box ? "qutisi bor" : ""].filter(Boolean).join(", "), imei: st.imei, price},
+    tradeIn: isDeal ? {name: [dv.name, dv.mem].filter(Boolean).join(" "), imei: dv.imei, sum: tradeUzs} : null,
+    rest: price - tradeUzs, months: sch.length, monthly: x.monthlyUzs, total: x.totalUzs, schedule: sch, terms: S.settings.contract || {}}));
+}
+async function showBuyPhotos(id) {
+  const x = S.arizalar.find(a => a.id === id); let list = x.bought?.photos ? x.bought.photos.map((data, slot) => ({slot, data})) : null;
+  if (!list) {
+    try { const sn = await getDocs(query(collection(db, "photos"), where("arizaId", "==", id))); list = sn.docs.map(d => d.data()).sort((a, b) => a.slot - b.slot); }
+    catch (e) { return toast(errText(e), true); }
+  }
+  modal(`<h2>Telefon rasmlari</h2><p class="src" style="margin:0 0 10px">${esc(x.device?.name || "")} ${esc(x.device?.mem || "")} · ${esc(x.client?.name || "")}</p>
+  <div class="bphotos view">${list.length ? list.map(p => `<a class="bph" href="${p.data}" target="_blank" rel="noopener"><img src="${p.data}" alt=""><span class="lab">${esc(slotLabel(p.slot, p.label))}</span></a>`).join("") : `<div class="empty">Rasm topilmadi.</div>`}</div>
+  <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn sec" id="bNo">Yopish</button></div>`, true);
+}
+function renderListModal(x) {
+  const branches = (S.branches || []).filter(b => b.active !== false);
+  modal(`<h2>Sotuvga chiqarish</h2><p class="src" style="margin:0 0 10px">${esc(x.device?.name || "")} ${esc(x.device?.mem || "")} · olingan narx ${uzs(x.bought.priceUzs)}</p>
+  <div class="field"><label for="lSell">Sotuv narxi, so'm *</label><input class="inp" id="lSell" inputmode="numeric"></div>
+  ${IS_ADMIN && branches.length > 1 ? `<div class="field"><label for="lBranch">Filial</label><select class="inp" id="lBranch">${branches.map(b => `<option value="${b.id}" ${b.id === (x.branchId || S.me.branchId) ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select></div>` : ""}
+  <p class="src">Telefon omborga "Sotuvda" holatida qo'shiladi va mijoz sahifasidagi vitrinada ko'rinadi.</p>
+  <div id="lErr" class="err hidden"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn sec" id="bNo">Bekor qilish</button><button class="btn pri" id="lOk" data-id="${x.id}">Sotuvga chiqarish</button></div>`);
+}
+async function saveList(id, btn) {
+  const x = S.arizalar.find(a => a.id === id), er = $("#lErr"), sell = +digits($("#lSell").value), kurs = S.settings.kurs;
+  const fail = t => { er.textContent = t; er.classList.remove("hidden"); btn.disabled = false; };
+  if (!(sell > 0)) return fail("Sotuv narxini kiriting");
+  if (sell < x.bought.priceUzs && !confirm("Sotuv narxi olingan narxdan past. Davom etasizmi?")) return;
+  btn.disabled = true;
+  const d = x.device || {}, a = d.answers || {}, branchId = $("#lBranch")?.value || (IS_ADMIN ? (x.branchId || S.me.branchId) : S.me.branchId);
+  const data = {branchId, modelName: d.name || "", brand: d.brand || "Apple", mem: d.mem || "", color: d.color || "", imei: x.bought.imei || "", cond: "bu",
+    grade: d.calc?.gradeLetter || "B", battery: a.batt ?? null, cyc: a.cyc ?? null, box: a.box || "",
+    buyUsd: Math.round(x.bought.priceUzs / kurs * 100) / 100, sellUsd: Math.round(sell / kurs * 100) / 100,
+    status: "sotuvda", source: "xarid", sourceArizaId: x.id, createdBy: S.me.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp()};
+  try {
+    const ref = doc(collection(db, "stock"));
+    try { await setDoc(ref, data); }
+    catch (e) { if (String(e?.code || "").includes("permission")) return fail("Omborga qo'shishga ruxsat yo'q. Telefonni admin panel orqali sotuvga chiqaring."); throw e; }
+    const listed = {stockId: ref.id, sellUzs: sell, at: serverTimestamp(), by: S.me.id, byName: S.me.fullName || ""};
+    await updateDoc(doc(db, "arizalar", x.id), {status: "sotuvda", listed, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: S.me.fullName || ""});
+    Object.assign(x, {status: "sotuvda", listed: {...listed, at: new Date()}});
+    if (Array.isArray(S.stock)) S.stock.unshift({id: ref.id, ...data, createdAt: new Date()});
+    if (typeof syncCatalog === "function") syncCatalog();
+    closeModal(); renderArizalar(); toast("Telefon sotuvga chiqarildi");
+  } catch (e) { fail(errText(e)); }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.buy) { const x = S.arizalar.find(a => a.id === b.dataset.buy); BUY = {id: b.dataset.buy, step: 1, chk: {cond: "bu"}, price: x?.manualUzs || x?.deviceUzs || 0, imei: "", pass: "", photos: [], saving: false}; return renderBuyModal(); }
+  if (b.dataset.bcond && BUY) { BUY.chk.cond = b.dataset.bcond; return renderBuyModal(); }
+  if (b.dataset.bback && BUY) { BUY.chk.back = b.dataset.bback; return renderBuyModal(); }
+  if (b.id === "bNext") return buyGoStep2();
+  if (b.id === "bBack" && BUY) { BUY.step = 1; return renderBuyModal(); }
+  if (b.dataset.bcontract) return openBuyContract(b.dataset.bcontract);
+  if (b.dataset.scontract) { const [k, id] = b.dataset.scontract.split("|"); return openSellContract(k, id); }
+  if (b.dataset.bphotos) return showBuyPhotos(b.dataset.bphotos);
+  if (b.dataset.list) return renderListModal(S.arizalar.find(a => a.id === b.dataset.list));
+  if (b.id === "bNo") { BUY = null; return closeModal(); }
+  if (b.id === "bOk") return saveBuy();
+  if (b.id === "lOk") return saveList(b.dataset.id, b);
+});
+/* ---- Almashtirish arizasi: "Bizning telefon sotildi" — trade-in shartnomasini shu yerdan tuzish ----
+   Mijoz telefoni avval "sotib olingan" bo'ladi (narx, IMEI, pasport, rasmlar). Keyin bizning telefon
+   "Sotilgan"ga o'tadi, mijoz telefoni omborga "Tayyorlanmoqda" tushadi, shartnoma (nasiya jadvali bilan) tuziladi. */
+let SOLD = null;
+const bfUzs = u => Math.round((u || 0) * S.settings.kurs / 1000) * 1000;
+const bfMaxM = () => S.settings.tiers[S.settings.tiers.length - 1].to;
+const bfRate = m => (S.settings.tiers.find(t => m <= t.to) || S.settings.tiers[S.settings.tiers.length - 1]).rate;
+const bfPlan = (diff, m) => { const monthly = Math.ceil((diff + diff * bfRate(m) * m / 100) / m / 1000) * 1000; return {monthly, total: monthly * m}; };
+const bfIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const bfAddM = (d, n) => { const x = new Date(d), day = x.getDate(); x.setDate(1); x.setMonth(x.getMonth() + n); x.setDate(Math.min(day, new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); return x; };
+const bfSchedule = (p, m) => Array.from({length: m}, (_, i) => ({n: i + 1, due: bfIso(bfAddM(new Date(), i + 1)), amount: p.monthly, paid: false}));
+function renderSoldModal() {
+  const x = S.arizalar.find(a => a.id === SOLD.id), st = SOLD.stock, our = bfUzs(st.sellUsd), dev = x.bought.priceUzs, diff = our - dev;
+  const m = Math.min(SOLD.months, bfMaxM()), p = diff > 0 ? bfPlan(diff, m) : null;
+  modal(`<h2>Bizning telefon sotildi</h2><p class="src" style="margin:0 0 10px">${esc(x.client?.name || "")} · ${esc(fmtPhone(x.client?.phone))} · pasport ${esc(x.bought.passport || "—")}</p>
+  <div class="sgrid"><div><div class="k">Mijoz topshirdi</div><b>${esc(x.device?.name || "")} ${esc(x.device?.mem || "")}</b><div>${uzs(dev)}</div></div>
+    <div><div class="k">Mijoz oladi</div><b>${esc(st.modelName)} ${esc(st.mem || "")}</b><div>${uzs(our)}</div></div>
+    <div class="hl"><div class="k">${diff > 0 ? "Qolgan summa" : "Mijozga qaytariladi"}</div><b>${uzs(Math.abs(diff))}</b></div></div>
+  ${diff > 0 ? `<div class="field" style="margin-top:12px"><label for="sMonths">Nasiya muddati</label><select class="inp" id="sMonths">${Array.from({length: bfMaxM()}, (_, i) => i + 1).map(n => `<option value="${n}" ${n === m ? "selected" : ""}>${n} oy</option>`).join("")}</select></div>
+    <div class="sgrid"><div><div class="k">Oylik to'lov</div><b>${uzs(p.monthly)}</b></div><div><div class="k">Jami to'lov</div><b>${uzs(p.total)}</b></div></div>` : ""}
+  ${st.status !== "sotuvda" ? `<div class="err">Bu telefon omborda "Sotuvda" emas (hozir: ${esc(st.status || "—")}). Boshqa telefon tanlash uchun trade-in'ni sotuvchi ilovasida boshlang.</div>` : ""}
+  <div id="sErr" class="err hidden"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn sec" id="bNo">Bekor qilish</button><button class="btn pri" id="sOk" ${st.status !== "sotuvda" || SOLD.saving ? "disabled" : ""}>${SOLD.saving ? "Saqlanmoqda…" : "✓ Shartnomani tasdiqlash"}</button></div>`);
+}
+async function openSold(id) {
+  const x = S.arizalar.find(a => a.id === id);
+  try {
+    const sn = await getDoc(doc(db, "stock", x.stockId));
+    if (!sn.exists()) return toast("Mijoz tanlagan telefon omborda topilmadi", true);
+    SOLD = {id, stock: {id: sn.id, ...sn.data()}, months: x.months || 6, saving: false}; renderSoldModal();
+  } catch (e) { toast(errText(e), true); }
+}
+async function saveSold() {
+  const x = S.arizalar.find(a => a.id === SOLD.id), st = SOLD.stock, er = $("#sErr");
+  const kurs = S.settings.kurs, our = bfUzs(st.sellUsd), devUzs = x.bought.priceUzs, devUsd = Math.round(devUzs / kurs * 100) / 100, diff = our - devUzs;
+  const months = diff > 0 ? Math.min(SOLD.months, bfMaxM()) : 0, p = months ? bfPlan(diff, months) : null;
+  SOLD.saving = true; renderSoldModal();
+  try {
+    const fresh = await getDoc(doc(db, "stock", st.id));
+    if (!fresh.exists() || fresh.data().status !== "sotuvda") throw {message: "Telefon allaqachon sotilgan yoki ombordan olingan. Sahifani yangilang."};
+    const d = x.device || {}, a = d.answers || {}, branchId = st.branchId;
+    const dealRef = doc(collection(db, "deals")), newRef = doc(collection(db, "stock")), contractNo = dealRef.id.slice(0, 6).toUpperCase();
+    const client = {name: x.client?.name || `Shartnoma №${contractNo}`, phone: digits(x.client?.phone) || "000000000", passport: x.bought.passport || "", address: ""};
+    const b = writeBatch(db);
+    b.set(dealRef, {
+      branchId, sellerId: S.me.id, sellerName: S.me.fullName || "", client, contractNo,
+      device: {modelId: d.modelId || "", brand: d.brand || "Apple", name: d.name || "", mem: d.mem || "", color: d.color || "", imei: x.bought.imei || "", answers: a,
+               calc: d.calc || {}, manual: {uzs: devUzs, autoUzs: x.deviceUzs || devUzs, reason: "Sotib olingan narx", by: S.me.id, byName: S.me.fullName || ""}},
+      deviceUsd: devUsd, deviceUzs: devUzs, stockId: st.id, ourModel: `${st.modelName} ${st.mem || ""}`.trim(), ourUsd: st.sellUsd, ourUzs: our,
+      diffUzs: diff, months, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0, kurs, newStockId: newRef.id, photoCount: 6,
+      schedule: p ? bfSchedule(p, months) : [], createdAt: serverTimestamp()});
+    b.update(doc(db, "stock", st.id), {status: "sotilgan", sold: {kind: "deal", ref: dealRef.id, at: serverTimestamp(), clientName: client.name, priceUzs: our}, updatedAt: serverTimestamp()});
+    b.set(newRef, {branchId, modelName: d.name || "", brand: d.brand || "Apple", mem: d.mem || "", color: d.color || "", imei: x.bought.imei || "", grade: d.calc?.gradeLetter || "D",
+      battery: a.batt ?? null, cyc: a.cyc ?? null, box: a.box || "", cond: "bu", buyUsd: devUsd, sellUsd: Math.round(devUsd * 100 / (100 - S.settings.discPct)),
+      status: "tayyorlanmoqda", source: "trade-in", sourceDealId: dealRef.id, createdBy: S.me.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp()});
+    await b.commit();
+    await updateDoc(doc(db, "arizalar", x.id), {status: "yakunlandi", dealId: dealRef.id, diffUzs: diff, payType: p ? "nasiya" : "", months, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: S.me.fullName || ""});
+    SOLD = null; toast("Shartnoma tuzildi"); await loadAll(); renderArizalar();
+    modal(`<h2>Shartnoma tuzildi</h2><div class="note" style="margin:0 0 12px">✅ Telefon sotildi. Sotish shartnomasini chop eting va mijozga imzolating (ikki nusxa).</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn sec" id="bNo">Yopish</button><button class="btn pri" data-scontract="deal|${dealRef.id}">📄 Shartnomani ochish</button></div>`);
+  } catch (e) {
+    SOLD.saving = false; renderSoldModal();
+    const t = String(e?.code || "").includes("permission") ? "Ruxsat yo'q: boshqa filial telefoni bo'lsa, shartnomani admin panel orqali tuzing." : errText(e);
+    $("#sErr").textContent = t; $("#sErr").classList.remove("hidden");
+  }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.sold) return openSold(b.dataset.sold);
+  if (b.id === "sOk") return saveSold();
+  if (b.id === "bNo") SOLD = null;
+});
+document.addEventListener("change", e => { if (e.target.id === "sMonths" && SOLD) { SOLD.months = +e.target.value; renderSoldModal(); } });
+/* IMEI bo'yicha qidiruv: oxirgi raqamlar terilsa — telefonni sotgan mijoz (ism, raqam, pasport) */
+let IMEIQ = "";
+function imeiResHtml() {
+  const q = digits(IMEIQ); if (q.length < 3) return q ? `<div class="src" style="margin:-6px 0 12px">Kamida 3 ta raqam tering</div>` : "";
+  const hits = S.arizalar.filter(a => a.bought?.imei && a.bought.imei.includes(q)).sort((a, b) => (b.bought.imei.endsWith(q) ? 1 : 0) - (a.bought.imei.endsWith(q) ? 1 : 0));
+  if (!hits.length) return `<div class="note" style="margin:-4px 0 12px">Bu IMEI bo'yicha sotib olingan telefon topilmadi.</div>`;
+  return `<div class="imeires">${hits.map(a => `<div><b>${esc(a.device?.name || "")} ${esc(a.device?.mem || "")}</b> · IMEI <b>${esc(a.bought.imei)}</b>
+    <div>Mijoz: <b>${esc(a.client?.name || "")}</b> · <a href="tel:+${esc(digits(a.client?.phone))}">${esc(fmtPhone(a.client?.phone))}</a> · Pasport: <b>${esc(a.bought.passport || "—")}</b></div>
+    <div class="src">Sotib olindi: ${uzs(a.bought.priceUzs)}${a.bought.at ? " · " + fdt(a.bought.at) : ""}${a.bought.byName ? " · " + esc(a.bought.byName) : ""} · ariza №${esc(a.no || a.id.slice(0, 6).toUpperCase())}</div></div>`).join("")}</div>`;
+}
+const imeiSearchHtml = () => `<input class="inp" id="imeiQ" inputmode="numeric" placeholder="🔎 IMEI bo'yicha qidirish (oxirgi raqamlarini tering)" value="${esc(IMEIQ)}" style="margin-bottom:12px"><div id="imeiRes">${imeiResHtml()}</div>`;
+document.addEventListener("input", e => {
+  if (e.target.id === "imeiQ") { IMEIQ = digits(e.target.value).slice(0, 15); e.target.value = IMEIQ; const r = $("#imeiRes"); if (r) r.innerHTML = imeiResHtml(); return; }
+  if (e.target.id === "bImei") { e.target.value = digits(e.target.value).slice(0, 15); if (BUY) BUY.imei = e.target.value; $("#bErr")?.classList.add("hidden"); return; }
+  if (e.target.id === "bPass") { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 9); if (BUY) BUY.pass = e.target.value; $("#bErr")?.classList.add("hidden"); return; }
+  if (e.target.id === "bPrice" || e.target.id === "lSell") { $("#bErr")?.classList.add("hidden"); $("#lErr")?.classList.add("hidden"); const v = +digits(e.target.value); e.target.value = v ? sum(v) : ""; if (e.target.id === "bPrice" && BUY) { BUY.price = v; BUY.priceTouched = true; } }
+});
+document.addEventListener("change", e => {
+  if (e.target.dataset?.bchk && BUY) { BUY.chk[e.target.dataset.bchk] = e.target.checked; const n = $("#bNext"); if (n) n.disabled = !buyStep1Ok(); }
+  if (e.target.id === "bReq" && BUY) BUY.reqBranch = e.target.value;
+});
+document.addEventListener("change", async e => {
+  const i = e.target.dataset?.bslot; if (i === undefined || !BUY || !e.target.files?.[0]) return;
+  // Faqat shu katak yangilanadi — oyna qayta chizilmaydi (bir nechta rasm ketma-ket qo'shilsa ham yo'qolmaydi)
+  const cell = e.target.closest(".bph");
+  try {
+    const data = await shrinkPhoto(e.target.files[0]); if (!BUY) return;
+    BUY.photos[+i] = data;
+    cell.querySelectorAll("img, .guide, .cam, .pico").forEach(n => n.remove()); cell.insertAdjacentHTML("afterbegin", `<img src="${data}" alt="">`);
+    const n = $("#bCnt"); if (n) n.textContent = BUY.photos.slice(0, 6).filter(Boolean).length;
+    $("#bErr")?.classList.add("hidden");
+  } catch (er) { toast(er.message, true); }
+});
+/* Mijoz arizalari — jonli kuzatish (shu filial va filial tanlanmagan arizalar) */
+let arzLive = null;
+function startArzLive() {
+  if (arzLive) return;
+  let first = true;
+  arzLive = onSnapshot(query(collection(db, "arizalar"), where("branchId", "in", [S.me.branchId, ""])), snap => {
+    const fresh = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((x, y) => (toDate(y.createdAt) || 0) - (toDate(x.createdAt) || 0));
+    const known = new Set(S.arizalar.map(a => a.id)), added = fresh.filter(a => !known.has(a.id));
+    S.arizalar = fresh; S.arzOk = true; updArzBadge();
+    // Modal ochiq yoki IMEI qidiruvga yozilayotgan bo'lsa — sahifani qayta chizmaymiz
+    if (S.tab === "arizalar" && !$("#modalRoot").innerHTML) { if (document.activeElement?.id === "imeiQ") { const r = $("#imeiRes"); if (r) r.innerHTML = imeiResHtml(); } else renderArizalar(); }
+    if (!first && added.length) toast(added.length === 1 ? `Yangi ariza: ${added[0].client?.name || ""}` : `${added.length} ta yangi ariza`);
+    first = false;
+  }, e => console.warn("arizalar live", e));
+}
+function renderArizalar() {
+  const cnt = k => k === "all" ? S.arizalar.length : S.arizalar.filter(a => a.status === k).length;
+  const items = S.arzFilter === "all" ? S.arizalar : S.arizalar.filter(a => a.status === S.arzFilter);
+  $("#page").innerHTML = hero("✉", "Mijoz arizalari", `${esc(S.branch.name)} filiali · mijozlar sayt orqali yuborgan`) +
+  (S.arzOk ? "" : `<div class="err">Arizalarni yuklab bo'lmadi. Admin Firebase ruxsat qoidalarini yangilashi kerak.</div>`) + `
+  ${imeiSearchHtml()}
+  <div class="chips">${[["yangi", "Yangi"], ["aloqa", "Bog'lanildi"], ["olindi", "Sotib olindi"], ["sotuvda", "Sotuvda"], ["yakunlandi", "Yakunlandi"], ["bekor", "Bekor"], ["all", "Hammasi"]].map(([k, l]) => `<button class="chip ${S.arzFilter === k ? "on" : ""}" data-af="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
+  ${items.length ? items.map(arzCard).join("") : `<div class="empty">Bu bo'limda ariza yo'q.</div>`}
+  <button class="btn sec block" style="margin-top:14px" data-act="arzReload">↻ Arizalarni yangilash</button>`;
+}
+async function setArzStatus(id, st, extra = {}) {
+  const x = S.arizalar.find(a => a.id === id), data = {status: st, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: S.me.fullName || "", ...extra};
+  await updateDoc(doc(db, "arizalar", id), data);
+  if (x) Object.assign(x, data, {updatedAt: new Date()});
+  updArzBadge();
+}
+// Arizadagi javoblar bilan trade-in'ni to'ldirish — sotuvchi telefonni ko'rib tekshiradi
+function startFromAriza(x) {
+  const d = x.device || {}, m = S.models.find(mm => mm.id === d.modelId), a = d.answers || {};
+  if (!m) return toast("Bu model ro'yxatda yo'q yoki yashirilgan. Trade-in'ni qo'lda boshlang", true);
+  W = freshW();
+  Object.assign(W, {brand: m.brand, modelId: m.id, mem: m.mems.includes(d.mem) ? d.mem : null, color: d.color || "",
+    power: a.power ?? null, lock: a.lock ?? null, screen: a.screen ?? null, body: a.body ?? null, batt: a.batt ?? 100, cyc: a.cyc ?? null,
+    bio: a.bio ?? null, cam: a.cam ?? null, repair: a.repair ?? null, box: a.box ?? null, arizaId: x.id, arizaNo: x.no || x.id.slice(0, 6).toUpperCase(),
+    // Telefon allaqachon sotib olingan bo'lsa — shartnoma o'sha narx bilan tuziladi
+    manual: x.bought?.priceUzs ? {uzs: x.bought.priceUzs, reason: "Sotib olingan narx"} : x.manualUzs ? {uzs: x.manualUzs, reason: x.manualReason || "Admin arizada o'zgartirgan"} : null});
+  // Mijoz barcha savollarga javob bergan; xotira hajmi ro'yxatdan o'chirilgan bo'lsa — o'sha savoldan davom etadi
+  W.q = W.mem ? SUMMARY : QS.findIndex(q => q.k === "mem");
+  if (S.stock.some(s => s.id === x.stockId && s.status === "sotuvda")) W.stockId = x.stockId;
+  go("tradein");
 }
 
 /* ================= PROFILE ================= */
@@ -863,6 +1370,7 @@ document.addEventListener("click", async e => {
   if (a === "colorOk") { const v = $("#colorTxt").value.trim(); if (!v) return toast("Rangni yozing yoki ro'yxatdan tanlang"); return answer("color", v); }
   if (a === "colorSkip") return answer("color", "");
   if (a === "battOk") { W.batt = Math.max(1, Math.min(100, Math.round(+$("#battN").value || 0))); return answer("batt", W.batt); }
+  if (a === "cycSkip") return answer("cyc", null);
   if (a === "cycOk") { const v = $("#cycN").value; if (v === "") return toast("Sikl sonini kiriting"); return answer("cyc", Math.max(0, Math.round(+v))); }
   if (a === "prev") { W.step--; renderWizard(); window.scrollTo(0, 0); return; }
   if (a === "cancelDeal") {
@@ -871,6 +1379,15 @@ document.addEventListener("click", async e => {
     return;
   }
   if (a === "cancelNo") return closeModal();
+  if (a === "manualPrice") return manualModal();
+  if (a === "manualReset") { W.manual = null; return renderWizard(); }
+  if (a === "mpNo") return closeModal();
+  if (a === "mpOk") {
+    const v = +digits($("#mpVal").value), why = $("#mpWhy").value.trim(), er = $("#mpErr");
+    if (!(v > 0)) { er.textContent = "Narxni kiriting"; return er.classList.remove("hidden"); }
+    if (why.length < 3) { er.textContent = "Sababini yozing"; return er.classList.remove("hidden"); }
+    W.manual = {uzs: Math.round(v / 1000) * 1000, reason: why}; closeModal(); renderWizard(); toast("Narx o'zgartirildi"); return;
+  }
   if (a === "cancelYes") { closeModal(); W = freshW(); renderWizard(); window.scrollTo(0, 0); toast("Bekor qilindi"); return; }
   if (a === "next" && canNext()) { if (W.step === 3) return saveDeal(); W.step++; renderWizard(); window.scrollTo(0, 0); return; }
   if (a === "new") { W = freshW(); return renderWizard(); }
@@ -882,6 +1399,14 @@ document.addEventListener("click", async e => {
   if (t.dataset.slt) { SALE.type = t.dataset.slt; return renderSale(); }
   if (a === "slCancel") { SALE = null; return closeModal(); }
   if (a === "slSave") return saveSale(t);
+  if (t.dataset.af) { S.arzFilter = t.dataset.af; return renderArizalar(); }
+  if (t.dataset.arzgo) { const x = S.arizalar.find(z => z.id === t.dataset.arzgo); if (x) startFromAriza(x); return; }
+  if (t.dataset.arz) {
+    const [id, st] = t.dataset.arz.split("|"); t.disabled = true;
+    try { await setArzStatus(id, st); renderArizalar(); toast("Ariza holati: " + ARZ_ST[st][0]); } catch (er) { t.disabled = false; toast(errText(er), true); }
+    return;
+  }
+  if (a === "arzReload") { t.disabled = true; try { await loadAll(); renderArizalar(); toast("Arizalar yangilandi"); } catch (er) { toast(errText(er), true); } t.disabled = false; return; }
   if (a === "refresh") { t.disabled = true; try { await loadAll(); toast("Yangilandi"); } catch (er) { toast(errText(er), true); } t.disabled = false; return; }
   if (a === "logout") { W = freshW(); return signOut(auth); }
   if (a === "pwSave") {
@@ -905,6 +1430,7 @@ document.addEventListener("input", e => {
   if (id === "stockQ") { S.stockQ = t.value; $("#stockList").innerHTML = stockListHtml(stockItems()); return; }
   if (id === "slPrice") { SALE.price = +t.value || 0; const sp = $("#slPlan"); if (sp) sp.innerHTML = salePlanHtml(); return; }
   if (id === "slRange") { SALE.months = +t.value; t.style.setProperty("--p", rngPct(SALE.months)); $("#slRangeVal").textContent = SALE.months + " oy"; $("#slPlan").innerHTML = salePlanHtml(); return; }
+  if (id === "mpVal") { const v = +digits(t.value); t.value = v ? sum(v) : ""; return; }
   if (id === "slName") SALE.name = t.value;
   if (id === "slPhone") SALE.phone = t.value;
 });
