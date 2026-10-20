@@ -315,7 +315,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.20-5";
+const APP_VERSION = "2026.10.20-6";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -637,6 +637,7 @@ const QS = [
   {k: "screen", t: "Ekran holati qanday?", pts: 1, hint: "Ekranni yorug'da, turli burchakdan ko'zdan kechiring."},
   {k: "body", t: "Korpus holati qanday?", pts: 1, hint: "Yon ramka, burchaklar va orqa qopqoqni tekshiring."},
   {k: "batt", t: "Batareya sig'imi necha foiz?", hint: "Sozlamalar → Batareya → Batareya holati."},
+  {k: "cyc", t: "Batareya sikli nechta? (necha marta to'liq zaryadlangan)", hint: "Sozlamalar → Umumiy → Ushbu qurilma haqida → Batareya → \"Sikllar soni\".", cond: () => hasCycles(curModel())},
   {k: "bio", t: "Face ID / barmoq izi ishlaydimi?", pts: 1},
   {k: "repair", t: "Telefon ta'mirlanganmi?", pts: 1, hint: "Sozlamalar → Umumiy → Ushbu qurilma haqida → Detallar va xizmat tarixi."},
   {k: "box", t: "Qutisi bormi?", opts: [["yes", "Ha, bor"], ["no", "Yo'q"]]}
