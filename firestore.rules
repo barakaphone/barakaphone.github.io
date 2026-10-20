@@ -53,11 +53,10 @@ service cloud.firestore {
       allow create: if (isAdmin() && uid != request.auth.uid)
                     || (signedIn() && uid == request.auth.uid && !setupDone()
                         && getAfter(setupPath()).data.by == request.auth.uid);
-      // Tizim egasining profiliga faqat egasining o'zi tegadi
-      allow update: if isAdmin() && (!setupDone() || get(setupPath()).data.by != uid || isOwner())
-                    && (uid != request.auth.uid || !changed().hasAny(['role', 'active', 'branchId']) || isOwner());
-      allow delete: if isAdmin() && uid != request.auth.uid
-                    && (!setupDone() || get(setupPath()).data.by != uid);
+      // Xodimni tahrirlash, parolini almashtirish, bloklash va o'chirish — faqat tizim egasi.
+      // Boshqa adminlar faqat yangi xodim qo'sha oladi (yuqoridagi create).
+      allow update: if isOwner();
+      allow delete: if isOwner() && uid != request.auth.uid;
     }
 
     // ---------- Sozlamalar va modellar (mijoz sahifasi o'qiydi) ----------

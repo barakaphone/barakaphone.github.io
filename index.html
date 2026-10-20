@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.20-6"></script>
+<script src="shartnoma.js?v=2026.10.20-7"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.20-6";
+const APP_VERSION = "2026.10.20-7";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -1432,13 +1432,13 @@ function renderArizalar() {
 function renderStaff() {
   const list = S.profiles.filter(p => !p.replacedBy).sort((a, b) => (a.role === b.role ? 0 : a.role === "admin" ? -1 : 1) || String(a.fullName).localeCompare(b.fullName));
   $("#page").innerHTML = `
-  <div class="note">Xodim planshetdagi ilovaga va (admin bo'lsa) shu panelga <b>telefon raqami va parol</b> bilan kiradi. Xodim parolini unutsa, <b>Parol</b> tugmasi orqali yangisini bering. Ishdan ketgan xodimni <b>O'chirish</b> mumkin — uning shartnomalari saqlanib qoladi.</div>
+  <div class="note">Xodim planshetdagi ilovaga va (admin bo'lsa) shu panelga <b>telefon raqami va parol</b> bilan kiradi. ${isOwner() ? `Xodim parolini unutsa, <b>Parol</b> tugmasi orqali yangisini bering. Ishdan ketgan xodimni <b>O'chirish</b> mumkin — uning shartnomalari saqlanib qoladi.` : `Xodimni tahrirlash, parolini almashtirish, bloklash va o'chirishni faqat tizim yaratuvchisi qila oladi.`}</div>
   <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn gold" id="addStaff">+ Xodim qo'shish</button></div>
   <div class="tw"><table><thead><tr><th>Xodim</th><th>Login</th><th>Rol</th><th>Filial</th><th>Holat</th><th></th></tr></thead><tbody>
   ${list.map(p => `<tr><td><b>${esc(p.fullName || "—")}</b>${p.id === S.me.id ? ' <span class="badge gold">Siz</span>' : ""}${p.id === OWNER_ID ? ' <span class="badge">Yaratuvchi</span>' : ""}</td><td>+${esc(p.login)}</td>
     <td>${p.role === "admin" ? '<span class="badge">Admin</span>' : '<span class="badge grey">Sotuvchi</span>'}</td><td>${bCell(p.branchId)}</td>
     <td>${p.active ? '<span class="badge ok">Faol</span>' : '<span class="badge bad">Bloklangan</span>'}</td>
-    <td style="white-space:nowrap">${p.id === S.me.id ? "" : `<button class="btn sec sm" data-editp="${p.id}">Tahrirlash</button> <button class="btn sec sm" data-resetp="${p.id}">Parol</button> <button class="btn ${p.active ? "bad" : "sec"} sm" data-togglep="${p.id}">${p.active ? "Bloklash" : "Ochish"}</button> <button class="btn bad sm" data-delp="${p.id}">O'chirish</button>`}</td></tr>`).join("")}
+    <td style="white-space:nowrap">${p.id === S.me.id || !isOwner() ? "" : `<button class="btn sec sm" data-editp="${p.id}">Tahrirlash</button> <button class="btn sec sm" data-resetp="${p.id}">Parol</button> <button class="btn ${p.active ? "bad" : "sec"} sm" data-togglep="${p.id}">${p.active ? "Bloklash" : "Ochish"}</button> <button class="btn bad sm" data-delp="${p.id}">O'chirish</button>`}</td></tr>`).join("")}
   </tbody></table></div>`;
   $("#addStaff").onclick = () => staffModal();
   document.querySelectorAll("[data-editp]").forEach(b => b.onclick = () => staffModal(S.profiles.find(p => p.id === b.dataset.editp)));
