@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.20-7"></script>
+<script src="shartnoma.js?v=2026.10.20-8"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.20-7";
+const APP_VERSION = "2026.10.20-8";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -409,7 +409,19 @@ function renderWorkPicker() {
   $("#meBranch").innerHTML = `<select id="workSel" class="inp sm" style="min-height:30px;padding:2px 8px;font-size:13px" title="Qaysi filial nomidan ishlayapsiz">${S.workList.map(b => `<option value="${b.id}" ${b.id === S.me.branchId ? "selected" : ""}>Ofis → ${esc(b.name)}</option>`).join("")}</select>`;
   $("#workSel").onchange = e => { try { localStorage.setItem("workBranch", e.target.value); } catch {} location.reload(); };
 }
+async function loadSmm() {
+  const [st, cat, az] = await Promise.all([getDoc(doc(db, "settings", "main")), getDoc(doc(db, "settings", "catalog")).catch(() => null),
+    getDocs(collection(db, "arizalar")).catch(e => { console.warn("arizalar", e); return null; })]);
+  if (!st.exists()) throw {message: "Tizim hali sozlanmagan. Admin bilan bog'laning."};
+  const c = cat && cat.exists() ? cat.data() : {branches: {}};
+  S.settings = st.data(); S.models = []; S.stock = []; S.stockAll = []; S.deals = []; S.sales = [];
+  S.branches = Object.entries(c.branches || {}).map(([id, name]) => ({id, name}));
+  S.branch = {id: "", name: "Barcha filiallar"};
+  S.arzOk = !!az; S.arizalar = az ? az.docs.map(d => ({id: d.id, ...d.data()})).sort((x, y) => (toDate(y.createdAt) || 0) - (toDate(x.createdAt) || 0)) : [];
+  updArzBadge(); $("#meBranch").textContent = "Ijtimoiy tarmoq";
+}
 async function loadAll() {
+  if (S.smm) return loadSmm();
   const b = S.me.branchId;
   const [st, br, ms, sk, dl, sa, cat, az] = await Promise.all([
     getDoc(doc(db, "settings", "main")), getDoc(doc(db, "branches", b)), getDocs(collection(db, "models")),
@@ -471,6 +483,14 @@ onAuthStateChanged(auth, async user => {
     const ps = await getDoc(doc(db, "profiles", user.uid));
     const p = ps.exists() ? ps.data() : null;
     if (!p || !p.active) { await signOut(auth); return loginError("Sizning loginingiz bloklangan yoki o'chirilgan. Admin bilan bog'laning."); }
+    // "Ijtimoiy tarmoq" xodimi: faqat barcha filiallar arizalari, bog'langanda foto yoki audio dalil joylaydi
+    if (p.role === "smm") {
+      S.me = {id: user.uid, ...p}; S.smm = true; S.tab = "arizalar";
+      document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("hidden", !["arizalar", "profile"].includes(b.dataset.tab)));
+      $("#meName").textContent = p.fullName || "Xodim";
+      show("app"); $("#page").innerHTML = `<div class="loading">Ma'lumotlar yuklanmoqda…</div>`;
+      await loadAll(); go("arizalar"); startArzLive(); return;
+    }
     if (!p.branchId) { await signOut(auth); return loginError("Siz hali filialga biriktirilmagansiz. Admin bilan bog'laning."); }
     S.me = {id: user.uid, ...p}; S.homeBranch = p.branchId;
     await pickWorkBranch();
@@ -926,12 +946,15 @@ function arzCard(x) {
     <div style="margin-top:6px"><a href="tel:+${esc(tel)}" style="font-weight:700;color:var(--g);font-size:17px">${esc(fmtPhone(tel))}</a></div>
     ${isBuyAriza(x) ? "" : `<div class="src" style="margin-top:6px">Topshiradi: <b>${esc(d.name)} ${esc(d.mem)}</b>${d.color ? ", " + esc(d.color) : ""}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""} — taxminan ${x.manualUzs ? `<s>${uzs(x.deviceUzs)}</s> <b>${uzs(x.manualUzs)}</b> (admin: ${esc(x.manualReason || "")})` : uzs(x.deviceUzs)}${d.askUzs ? ` · <b>mijoz narxi: ${uzs(d.askUzs)}</b>` : ""}</div>`}
     <div class="src">Olmoqchi: <b>${x.ourModel ? esc(x.ourModel) + " (" + uzs(x.ourUzs) + ")" : "tanlamagan"}</b> · ${esc(pay)}</div>
-    ${x.note ? `<div class="note" style="margin:8px 0 0">Izoh: ${esc(x.note)}</div>` : ""}${buyInfoHtml(x)}
+    ${S.smm ? `<div class="src">Filial: <b>${esc(S.branches.find(b => b.id === x.branchId)?.name || "tanlanmagan")}</b></div>` : ""}
+    ${x.note ? `<div class="note" style="margin:8px 0 0">Izoh: ${esc(x.note)}</div>` : ""}${S.smm ? "" : buyInfoHtml(x)}
+    ${x.contact?.byName ? `<div class="note" style="margin:8px 0 0">📞 Bog'lanildi: <b>${esc(x.contact.byName)}</b>, ${fdt(x.contact.at)}${x.contact.mediaId ? (x.contact.kind === "audio" ? " · 🎧 audio" : " · 🖼 rasm") : ""}</div>` : ""}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+      ${S.smm ? (x.status === "yangi" ? `<button class="btn pri sm" data-contact="${x.id}">📞 Bog'lanildi</button>` : "") : `
       ${buyButtonsHtml(x)}
       ${isBuyAriza(x) || ["yakunlandi", "bekor"].includes(x.status) || (isSellAriza(x) && ["olindi", "sotuvda"].includes(x.status)) ? "" : `<button class="btn ${isSellAriza(x) ? "sec" : "pri"} sm" data-arzgo="${x.id}">Trade-in'ni boshlash</button>`}
       ${x.status === "yangi" ? `<button class="btn sec sm" data-arz="${x.id}|aloqa">Bog'lanildi</button>` : ""}
-      ${["olindi", "sotuvda"].includes(x.status) ? "" : x.status !== "bekor" && x.status !== "yakunlandi" ? `<button class="btn sec sm" style="color:var(--bad)" data-arz="${x.id}|bekor">Bekor qilish</button>` : `<button class="btn sec sm" data-arz="${x.id}|aloqa">Qayta ochish</button>`}
+      ${["olindi", "sotuvda"].includes(x.status) ? "" : x.status !== "bekor" && x.status !== "yakunlandi" ? `<button class="btn sec sm" style="color:var(--bad)" data-arz="${x.id}|bekor">Bekor qilish</button>` : `<button class="btn sec sm" data-arz="${x.id}|aloqa">Qayta ochish</button>`}`}
     </div></div>`;
 }
 const IS_ADMIN = false;
@@ -1311,7 +1334,7 @@ let arzLive = null;
 function startArzLive() {
   if (arzLive) return;
   let first = true;
-  arzLive = onSnapshot(query(collection(db, "arizalar"), where("branchId", "in", [S.me.branchId, ""])), snap => {
+  arzLive = onSnapshot(S.smm ? collection(db, "arizalar") : query(collection(db, "arizalar"), where("branchId", "in", [S.me.branchId, ""])), snap => {
     const fresh = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((x, y) => (toDate(y.createdAt) || 0) - (toDate(x.createdAt) || 0));
     const known = new Set(S.arizalar.map(a => a.id)), added = fresh.filter(a => !known.has(a.id));
     S.arizalar = fresh; S.arzOk = true; updArzBadge();
@@ -1324,15 +1347,17 @@ function startArzLive() {
 function renderArizalar() {
   const cnt = k => k === "all" ? S.arizalar.length : S.arizalar.filter(a => a.status === k).length;
   const items = S.arzFilter === "all" ? S.arizalar : S.arizalar.filter(a => a.status === S.arzFilter);
-  $("#page").innerHTML = hero("✉", "Mijoz arizalari", `${esc(S.branch.name)} filiali · mijozlar sayt orqali yuborgan`) +
+  $("#page").innerHTML = hero("✉", "Mijoz arizalari", S.smm ? "Barcha filiallar · bog'langach foto yoki audio joylang" : `${esc(S.branch.name)} filiali · mijozlar sayt orqali yuborgan`) +
   (S.arzOk ? "" : `<div class="err">Arizalarni yuklab bo'lmadi. Admin Firebase ruxsat qoidalarini yangilashi kerak.</div>`) + `
-  ${imeiSearchHtml()}
+  ${S.smm ? "" : imeiSearchHtml()}
   <div class="chips">${[["yangi", "Yangi"], ["aloqa", "Bog'lanildi"], ["olindi", "Sotib olindi"], ["sotuvda", "Sotuvda"], ["yakunlandi", "Yakunlandi"], ["bekor", "Bekor"], ["all", "Hammasi"]].map(([k, l]) => `<button class="chip ${S.arzFilter === k ? "on" : ""}" data-af="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
   ${items.length ? items.map(arzCard).join("") : `<div class="empty">Bu bo'limda ariza yo'q.</div>`}
   <button class="btn sec block" style="margin-top:14px" data-act="arzReload">↻ Arizalarni yangilash</button>`;
 }
 async function setArzStatus(id, st, extra = {}) {
   const x = S.arizalar.find(a => a.id === id), data = {status: st, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: S.me.fullName || "", ...extra};
+  // Kim bog'langani arizada ko'rinadi
+  if (st === "aloqa" && !x?.contact) data.contact = {by: S.me.id, byName: S.me.fullName || "", at: serverTimestamp()};
   await updateDoc(doc(db, "arizalar", id), data);
   if (x) Object.assign(x, data, {updatedAt: new Date()});
   updArzBadge();
@@ -1351,6 +1376,55 @@ function startFromAriza(x) {
   W.q = W.mem ? SUMMARY : QS.findIndex(q => q.k === "mem");
   if (S.stock.some(s => s.id === x.stockId && s.status === "sotuvda")) W.stockId = x.stockId;
   go("tradein");
+}
+
+/* ---- "Ijtimoiy tarmoq": Bog'lanildi — foto yoki audio dalil majburiy ---- */
+const MEDIA_MAX = 990000; // Firestore hujjatiga sig'adigan base64 hajmi (~720 KB fayl)
+let CT = null, rec = null;
+const fileToData = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error("Faylni o'qib bo'lmadi")); r.readAsDataURL(f); });
+function contactModal(id) {
+  const x = S.arizalar.find(a => a.id === id); if (!x) return;
+  CT = {id, kind: null, data: null};
+  modal(`<h2>Bog'lanildi</h2><p class="src" style="margin:0 0 10px">${esc(x.client?.name || "")} · ${esc(fmtPhone(digits(x.client?.phone)))}</p>
+    <p>Mijoz bilan yozishma rasmini (skrinshot) yoki ovozli xabar / qo'ng'iroq yozuvini joylang.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <label class="btn sec">🖼 Rasm joylash<input type="file" accept="image/*" id="ctImg" hidden></label>
+      <label class="btn sec">🎧 Audio fayl<input type="file" accept="audio/*" id="ctAud" hidden></label>
+      <button class="btn sec" id="ctRec">🎙 Yozib olish</button></div>
+    <div id="ctPrev" style="margin-top:12px"></div><div id="ctErr" class="err hidden"></div>
+    <div class="acts"><button class="btn sec" id="ctNo">Bekor qilish</button><button class="btn pri" id="ctOk" disabled>Saqlash</button></div>`);
+  const err = m => { $("#ctErr").textContent = m; $("#ctErr").classList.remove("hidden"); };
+  const set = (kind, data) => {
+    if (data.length > MEDIA_MAX) return err(kind === "audio" ? "Audio juda katta (≈ 700 KB gacha). Qisqaroq yozuv joylang." : "Rasm juda katta");
+    CT.kind = kind; CT.data = data; $("#ctErr").classList.add("hidden"); $("#ctOk").disabled = false;
+    $("#ctPrev").innerHTML = kind === "audio" ? `<audio controls style="width:100%" src="${data}"></audio>` : `<img src="${data}" alt="" style="max-width:100%;max-height:260px;border-radius:10px">`;
+  };
+  $("#ctImg").onchange = async e => { const f = e.target.files[0]; if (!f) return; try { set("photo", await compress(f)); } catch (er) { err(er.message); } };
+  $("#ctAud").onchange = async e => { const f = e.target.files[0]; if (!f) return; try { set("audio", await fileToData(f)); } catch (er) { err(er.message); } };
+  $("#ctRec").onclick = async () => {
+    if (rec) { rec.stop(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio: true}), parts = [];
+      rec = new MediaRecorder(stream, {audioBitsPerSecond: 24000});
+      rec.ondataavailable = e => parts.push(e.data);
+      rec.onstop = async () => { stream.getTracks().forEach(t => t.stop()); const b = new Blob(parts, {type: rec.mimeType || "audio/webm"}); rec = null; const btn = $("#ctRec"); if (btn) btn.textContent = "🎙 Qayta yozish"; try { set("audio", await fileToData(b)); } catch (er) { err(er.message); } };
+      rec.start(); $("#ctRec").textContent = "⏹ To'xtatish";
+    } catch (er) { rec = null; err("Mikrofonga ruxsat berilmadi"); }
+  };
+  $("#ctNo").onclick = () => { if (rec) rec.stop(); CT = null; closeModal(); };
+  $("#ctOk").onclick = async () => {
+    if (!CT?.data) return err("Rasm yoki audio joylang");
+    $("#ctOk").disabled = true;
+    try {
+      const mref = doc(collection(db, "media")), name = S.me.fullName || "", b = writeBatch(db);
+      b.set(mref, {kind: CT.kind, data: CT.data, arzId: id, createdBy: S.me.id, byName: name, createdAt: serverTimestamp()});
+      const contact = {by: S.me.id, byName: name, at: serverTimestamp(), mediaId: mref.id, kind: CT.kind};
+      b.update(doc(db, "arizalar", id), {status: "aloqa", contact, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: name});
+      await b.commit();
+      Object.assign(x, {status: "aloqa", contact: {...contact, at: new Date()}, updatedAt: new Date(), updatedBy: S.me.id, updatedByName: name});
+      CT = null; closeModal(); updArzBadge(); renderArizalar(); toast("Saqlandi: Bog'lanildi");
+    } catch (er) { $("#ctOk").disabled = false; err(errText(er)); }
+  };
 }
 
 /* ================= PROFILE ================= */
@@ -1409,6 +1483,7 @@ document.addEventListener("click", async e => {
   if (a === "slCancel") { SALE = null; return closeModal(); }
   if (a === "slSave") return saveSale(t);
   if (t.dataset.af) { S.arzFilter = t.dataset.af; return renderArizalar(); }
+  if (t.dataset.contact) return contactModal(t.dataset.contact);
   if (t.dataset.arzgo) { const x = S.arizalar.find(z => z.id === t.dataset.arzgo); if (x) startFromAriza(x); return; }
   if (t.dataset.arz) {
     const [id, st] = t.dataset.arz.split("|"); t.disabled = true;

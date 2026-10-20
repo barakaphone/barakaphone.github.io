@@ -21,7 +21,10 @@ service cloud.firestore {
     function signedIn()   { return request.auth != null; }
     function profPath()   { return /databases/$(database)/documents/profiles/$(request.auth.uid); }
     function me()         { return get(profPath()).data; }
-    function isStaff()    { return signedIn() && exists(profPath()) && me().active == true; }
+    function isActive()   { return signedIn() && exists(profPath()) && me().active == true; }
+    // Sotuvchi va admin. "Ijtimoiy tarmoq" (smm) xodimi bunga kirmaydi — u faqat mijoz arizalarini ko'radi
+    function isStaff()    { return isActive() && me().role in ['admin', 'seller']; }
+    function isSmm()      { return isActive() && me().role == 'smm'; }
     function isAdmin()    { return isStaff() && me().role == 'admin'; }
     function myBranch()   { return me().branchId; }
     function setupPath()  { return /databases/$(database)/documents/meta/setup; }
@@ -152,10 +155,29 @@ service cloud.firestore {
                     && num(newData().get('totalUzs', 0))
                     && num(newData().get('kurs', 0));
       // Xodimlar: admin hammasini, sotuvchi o'z filiali va filiali tanlanmagan ("") arizalarni ko'radi
-      allow read: if isAdmin() || (isStaff() && resource.data.branchId in [myBranch(), '']) || isOffice();
+      allow read: if isAdmin() || isSmm() || (isStaff() && resource.data.branchId in [myBranch(), '']) || isOffice();
+      // smm: faqat "Yangi" → "Bog'lanildi", o'z nomi bilan va shu paketda joylangan foto/audio dalil bilan
       allow update: if isAdmin()
+                    || (isSmm() && resource.data.status == 'yangi' && newData().status == 'aloqa'
+                        && changed().hasOnly(['status', 'contact', 'updatedAt', 'updatedBy', 'updatedByName'])
+                        && newData().updatedBy == request.auth.uid && newData().contact.by == request.auth.uid
+                        && newData().contact.mediaId is string
+                        && getAfter(/databases/$(database)/documents/media/$(newData().contact.mediaId)).data.arzId == id
+                        && getAfter(/databases/$(database)/documents/media/$(newData().contact.mediaId)).data.createdBy == request.auth.uid)
                     || (isStaff() && (resource.data.branchId in [myBranch(), ''] || isOffice())
                         && !changed().hasAny(['client', 'no', 'createdAt', 'branchId']));
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Bog'lanish dalili (foto yoki audio) — faqat admin ko'radi ----------
+    match /media/{id} {
+      allow read: if isAdmin();
+      allow create: if (isSmm() || isStaff())
+                    && newData().keys().hasOnly(['kind', 'data', 'arzId', 'createdBy', 'byName', 'createdAt'])
+                    && newData().createdBy == request.auth.uid && newData().createdAt == request.time
+                    && newData().kind in ['photo', 'audio'] && str(newData().data, 990000)
+                    && str(newData().arzId, 40) && str(newData().get('byName', ''), 80);
+      allow update: if false;
       allow delete: if isAdmin();
     }
 

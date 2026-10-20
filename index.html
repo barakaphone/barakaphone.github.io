@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.20-7"></script>
+<script src="shartnoma.js?v=2026.10.20-8"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.20-7";
+const APP_VERSION = "2026.10.20-8";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -932,6 +932,23 @@ function arzAnswers(x) {
     ["Face ID / Touch ID", lab("bio")], ["Kamera", lab("cam")], ["Ta'mir", lab("repair")], ["Qutisi", a.box === "no" ? "Yo'q" : "Bor"]);
   return `<div class="tw" style="margin-top:8px"><table><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td><b>${esc(r[1])}</b></td></tr>`).join("")}</tbody></table></div>`;
 }
+// Kim bog'langan ("Ijtimoiy tarmoq" xodimi foto yoki audio dalil bilan) — faqat admin ochib ko'radi
+function contactHtml(x) {
+  const c = x.contact; if (!c?.byName) return "";
+  return `<div class="note" style="margin:10px 0 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">📞 Bog'lanildi: <b>${esc(c.byName)}</b>, ${fdt(c.at)}
+    ${c.mediaId ? `<button class="btn sec sm" data-media="${esc(c.mediaId)}">${c.kind === "audio" ? "🎧 Audioni eshitish" : "🖼 Rasmni ko'rish"}</button>` : ""}</div>`;
+}
+async function showMedia(id) {
+  modal(`<h2>Bog'lanish dalili</h2><div id="mdBox" class="loading">Yuklanmoqda…</div><div class="acts"><button class="btn sec" id="mdClose">Yopish</button></div>`);
+  $("#mdClose").onclick = closeModal;
+  try {
+    const s = await getDoc(doc(db, "media", id)); if (!s.exists()) { $("#mdBox").textContent = "Fayl topilmadi"; return; }
+    const m = s.data(), box = $("#mdBox"); box.className = "";
+    box.innerHTML = m.kind === "audio" ? `<audio controls style="width:100%" src="${esc(m.data)}"></audio>` : `<img src="${esc(m.data)}" alt="" style="max-width:100%;border-radius:10px">`;
+    box.insertAdjacentHTML("beforeend", `<p class="src">${esc(m.byName || "")} · ${fdt(m.createdAt)}</p>`);
+  } catch (e) { $("#mdBox").textContent = errText(e); }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-media]"); if (b) showMedia(b.dataset.media); });
 function arzCard(x) {
   const [stL, stC] = ARZ_ST[x.status] || [x.status || "—", "grey"], d = x.device || {}, tel = digits(x.client?.phone);
   const pay = isBuyAriza(x) ? (x.payType === "nasiya" ? `Muddatli: ${uzs(x.monthlyUzs)} × ${x.months} oy` : `Naqd: ${uzs(x.ourUzs)}`) : !x.ourModel ? "Telefonini sotmoqchi" : x.diffUzs <= 0 ? `Mijozga qaytariladi: ${uzs(-x.diffUzs)}` : x.payType === "nasiya" ? `Nasiya: ${uzs(x.monthlyUzs)} × ${x.months} oy` : `Naqd qo'shib to'laydi: ${uzs(x.diffUzs)}`;
@@ -945,6 +962,7 @@ function arzCard(x) {
     <div><div class="k">To'lov</div><div class="v" style="white-space:normal">${esc(pay)}</div></div>
   </div>
   ${x.note ? `<div class="note" style="margin-bottom:0"><b>Izoh:</b> ${esc(x.note)}</div>` : ""}
+  ${contactHtml(x)}
   ${x.updatedByName ? `<div class="src" style="margin-top:8px">Oxirgi o'zgartirish: ${esc(x.updatedByName)}, ${fdt(x.updatedAt)}</div>` : ""}
   ${buyInfoHtml(x)}
   ${isBuyAriza(x) ? "" : `<details><summary>Mijoz javoblari</summary>${arzAnswers(x)}</details>`}
@@ -1388,8 +1406,10 @@ function renderArizalar() {
   document.querySelectorAll("[data-arz]").forEach(b => b.onclick = async () => {
     const [id, st] = b.dataset.arz.split("|"), x = S.arizalar.find(a => a.id === id); b.disabled = true;
     try {
-      await updateDoc(doc(db, "arizalar", id), {status: st, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: S.me.fullName || ""});
-      Object.assign(x, {status: st, updatedAt: new Date(), updatedBy: S.me.id, updatedByName: S.me.fullName || ""}); updArzBadge(); renderArizalar(); toast("Ariza holati: " + ARZ_ST[st][0]);
+      const data = {status: st, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: S.me.fullName || ""};
+      if (st === "aloqa" && !x.contact) data.contact = {by: S.me.id, byName: S.me.fullName || "", at: serverTimestamp()};
+      await updateDoc(doc(db, "arizalar", id), data);
+      Object.assign(x, data, {updatedAt: new Date()}, data.contact ? {contact: {...data.contact, at: new Date()}} : {}); updArzBadge(); renderArizalar(); toast("Ariza holati: " + ARZ_ST[st][0]);
     } catch (e) { b.disabled = false; toast(errText(e), true); }
   });
   // Tekshiruvda xato topilsa — telefon bahosini qo'lda o'zgartirish (sotuvchi trade-in'ni shu narx bilan boshlaydi)
@@ -1436,7 +1456,7 @@ function renderStaff() {
   <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn gold" id="addStaff">+ Xodim qo'shish</button></div>
   <div class="tw"><table><thead><tr><th>Xodim</th><th>Login</th><th>Rol</th><th>Filial</th><th>Holat</th><th></th></tr></thead><tbody>
   ${list.map(p => `<tr><td><b>${esc(p.fullName || "—")}</b>${p.id === S.me.id ? ' <span class="badge gold">Siz</span>' : ""}${p.id === OWNER_ID ? ' <span class="badge">Yaratuvchi</span>' : ""}</td><td>+${esc(p.login)}</td>
-    <td>${p.role === "admin" ? '<span class="badge">Admin</span>' : '<span class="badge grey">Sotuvchi</span>'}</td><td>${bCell(p.branchId)}</td>
+    <td>${p.role === "admin" ? '<span class="badge">Admin</span>' : p.role === "smm" ? '<span class="badge gold">Ijtimoiy tarmoq</span>' : '<span class="badge grey">Sotuvchi</span>'}</td><td>${bCell(p.branchId)}</td>
     <td>${p.active ? '<span class="badge ok">Faol</span>' : '<span class="badge bad">Bloklangan</span>'}</td>
     <td style="white-space:nowrap">${p.id === S.me.id || !isOwner() ? "" : `<button class="btn sec sm" data-editp="${p.id}">Tahrirlash</button> <button class="btn sec sm" data-resetp="${p.id}">Parol</button> <button class="btn ${p.active ? "bad" : "sec"} sm" data-togglep="${p.id}">${p.active ? "Bloklash" : "Ochish"}</button> <button class="btn bad sm" data-delp="${p.id}">O'chirish</button>`}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -1501,7 +1521,7 @@ function staffModal(p) {
   ${edit ? `<div class="field"><label>Login</label><input class="inp" value="+${esc(p.login)}" disabled></div>` : `
   <div class="field"><label>Telefon raqami (login)</label><input class="inp" id="fPhone" inputmode="tel" placeholder="998 90 123 45 67"></div>
   <div class="field"><label>Parol (kamida 6 belgi)</label><input class="inp" id="fPass" type="text" autocomplete="off"></div>`}
-  <div class="row"><div class="field"><label>Rol</label><select class="inp" id="fRole"><option value="seller" ${p?.role !== "admin" ? "selected" : ""}>Sotuvchi (faqat ilova)</option><option value="admin" ${p?.role === "admin" ? "selected" : ""}>Admin (to'liq ruxsat)</option></select></div>
+  <div class="row"><div class="field"><label>Rol</label><select class="inp" id="fRole"><option value="seller" ${p?.role !== "admin" && p?.role !== "smm" ? "selected" : ""}>Sotuvchi (faqat ilova)</option><option value="smm" ${p?.role === "smm" ? "selected" : ""}>Ijtimoiy tarmoq (faqat mijoz arizalari)</option><option value="admin" ${p?.role === "admin" ? "selected" : ""}>Admin (to'liq ruxsat)</option></select></div>
     <div class="field"><label>Filial</label><select class="inp" id="fBranch">${branchOpts}</select></div></div>
   <div id="fErr" class="err hidden"></div>
   <div class="acts"><button class="btn sec" id="fCancel">Bekor qilish</button><button class="btn pri" id="fSave">${edit ? "Saqlash" : "Xodimni qo'shish"}</button></div>`);
