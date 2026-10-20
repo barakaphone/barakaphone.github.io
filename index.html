@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.20-2"></script>
+<script src="shartnoma.js?v=2026.10.20-3"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.20-2";
+const APP_VERSION = "2026.10.20-3";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -757,9 +757,15 @@ function stockModal() {
   <div id="nErr" class="err hidden"></div>
   <div class="acts"><button class="btn sec" id="nCancel">Bekor qilish</button><button class="btn pri" id="nSave">Qo'shish</button></div>`);
   const fill = () => { const m = S.models.find(x => x.id === $("#nModel").value); $("#nMem").innerHTML = (m?.mems || []).map(x => `<option>${esc(x)}</option>`).join(""); $("#nColorBox").innerHTML = colorPicker("nColor", m); bindPicker("nColor"); };
-  $("#nModel").onchange = fill; fill();
+  // Yangi telefon: sotish narxi modelning "Yangi telefon sotish narxi"dan (xotira pog'onasi bilan) avtomatik yoziladi
+  const autoSell = () => { const m = S.models.find(x => x.id === $("#nModel").value), el = $("#nSell");
+    if ($("#nCond").value !== "yangi" || !(m?.marketNew > 0)) { if (el.dataset.auto) { el.value = ""; delete el.dataset.auto; } return; }
+    if (el.value && !el.dataset.auto) return;
+    el.value = m.marketNew + (m.step || 0) * Math.max(0, m.mems.indexOf($("#nMem").value)); el.dataset.auto = "1"; };
+  $("#nModel").onchange = () => { fill(); autoSell(); }; fill();
+  $("#nMem").onchange = autoSell; $("#nSell").oninput = () => delete $("#nSell").dataset.auto;
   // IMEI faqat yangi telefonlar uchun
-  $("#nCond").onchange = () => $("#nImeiBox").classList.toggle("hidden", $("#nCond").value !== "yangi");
+  $("#nCond").onchange = () => { $("#nImeiBox").classList.toggle("hidden", $("#nCond").value !== "yangi"); autoSell(); };
   $("#nCancel").onclick = closeModal;
   $("#nSave").onclick = async () => {
     const m = S.models.find(x => x.id === $("#nModel").value), buy = +$("#nBuy").value, sell = +$("#nSell").value;
@@ -1685,9 +1691,9 @@ function renderSettings() {
     ${s.tiers.map((t, i) => `<tr><td>${tFrom(i)}–${t.to} oy</td><td>${num(`tiers.${i}.to`, t.to)}</td><td>${num(`tiers.${i}.rate`, t.rate, 0.1)}</td></tr>`).join("")}</tbody></table></div></div>
   <div style="position:sticky;bottom:10px;display:flex;justify-content:flex-end;margin-bottom:16px"><button class="btn pri" id="saveSettings">Sozlamalarni saqlash</button></div>
   <div class="panel"><h3 style="margin-top:0">Model narxlari</h3>
-    <p class="sub">Bozor narxi — a'lo holat, qutisi bilan, eng kichik xotira uchun ($). Har bir keyingi xotira pog'onasiga qo'shimcha summa qo'shiladi. O'zgartirish darhol saqlanadi.</p>
+    <p class="sub">B/U bozor narxi — mijoz telefonini baholash uchun: a'lo holat, qutisi bilan, eng kichik xotira ($). Yangi telefon sotish narxi — faqat Omborga "Yangi" telefon qo'shganda sotish narxiga avtomatik yoziladi (mijoz bahosiga ta'sir qilmaydi). Har bir keyingi xotira pog'onasiga qo'shimcha summa qo'shiladi. O'zgartirish darhol saqlanadi.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><input class="inp" id="mSearch" placeholder="Model qidirish" style="max-width:260px"><button class="btn gold" id="addModel">+ Model qo'shish</button></div>
-    <div class="tw"><table><thead><tr><th>Model</th><th>Xotiralar</th><th class="n">Bozor narxi, $</th><th class="n">+ pog'ona, $</th><th class="n">Olish narxi</th><th>Holat</th></tr></thead><tbody id="mRows"></tbody></table></div>
+    <div class="tw"><table><thead><tr><th>Model</th><th>Xotiralar</th><th class="n">B/U bozor narxi, $</th><th class="n">+ pog'ona, $</th><th class="n">Olish narxi</th><th class="n">Yangi telefon sotish narxi, $</th><th>Holat</th></tr></thead><tbody id="mRows"></tbody></table></div>
   </div>`;
   const setPath = (obj, path, v) => { const ks = path.split("."); let o = obj; ks.slice(0, -1).forEach(k => o = o[k]); o[ks[ks.length - 1]] = v; };
   document.querySelectorAll("[data-set]").forEach(inp => inp.oninput = () => setPath(s, inp.dataset.set, +inp.value));
@@ -1708,9 +1714,10 @@ function renderSettings() {
       <td class="n"><input class="inp sm" type="number" data-mk="${m.id}" value="${m.market}"></td>
       <td class="n"><input class="inp sm" style="width:80px" type="number" data-ms="${m.id}" value="${m.step}"></td>
       <td class="n">${uzs(toUzs(m.market * (100 - S.settings.discPct) / 100))}</td>
+      <td class="n"><input class="inp sm" type="number" data-mn="${m.id}" value="${m.marketNew || ""}" placeholder="—"></td>
       <td><button class="btn ${m.active !== false ? "sec" : "gold"} sm" data-ma="${m.id}">${m.active !== false ? "Yashirish" : "Ko'rsatish"}</button> <button class="btn bad sm" data-mdel="${m.id}" title="Modelni o'chirish">O'chirish</button></td></tr>`).join("");
-    document.querySelectorAll("[data-mk],[data-ms]").forEach(inp => inp.onchange = async () => {
-      const id = inp.dataset.mk || inp.dataset.ms, f = inp.dataset.mk ? "market" : "step", v = +inp.value; if (!(v >= 0)) return;
+    document.querySelectorAll("[data-mk],[data-ms],[data-mn]").forEach(inp => inp.onchange = async () => {
+      const id = inp.dataset.mk || inp.dataset.ms || inp.dataset.mn, f = inp.dataset.mk ? "market" : inp.dataset.mn ? "marketNew" : "step", v = +inp.value; if (!(v >= 0)) return;
       try { await updateDoc(doc(db, "models", id), {[f]: v}); S.models.find(m => m.id === id)[f] = v; rows(); toast("Saqlandi"); } catch (e) { toast(errText(e), true); }
     });
     document.querySelectorAll("[data-mc]").forEach(b => b.onclick = () => {
