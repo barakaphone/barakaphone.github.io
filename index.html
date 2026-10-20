@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.20-4"></script>
+<script src="shartnoma.js?v=2026.10.20-5"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.20-4";
+const APP_VERSION = "2026.10.20-5";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -320,16 +320,16 @@ const errText = e => {
 /* Narx hisoblash — APK ilova bilan bir xil formula */
 function hasCycles(m) { return m.brand === "Apple" && /iPhone (1[5-9]|[2-9]\d|Air)/.test(m.name); }
 // fv 2 (2026.10.16 dan): batareya va sikl ball emas, narxdan to'g'ridan-to'g'ri foiz ayiradi. legacy — eski shartnomalarni tekshirish uchun
-// fv 6+: sig'im foiz ayiradi, sikl esa har 500 siklga qat'iy $ (cycUsd); fv 5 gacha — sikl foizda (eski shartnomalarni tekshirish uchun)
-// Batareya sikli: har to'liq 500 sikl uchun narxdan qat'iy summa ($) ayiriladi (sozlamada o'zgaradi, standart 20$)
+// fv 7+: narxdan faqat batareya sig'imi ayiradi, sikl ta'sir qilmaydi.
+// Eski shartnomalarni tekshirish uchun: fv 5 gacha sikl foizda, fv 6 da har 500 siklga qat'iy $ (cycUsd)
 const cycUsd = (m, a, s) => hasCycles(m) && a.cyc != null && a.cyc !== "" ? Math.floor(Math.max(0, +a.cyc) / 500) * (s.cycUsd ?? 20) : 0;
-function battAdj(m, a, s, fv = 6) {
+function battAdj(m, a, s, fv = 7) {
   const out = [], bp = s.battPct ?? 1, cp = s.cycPct ?? 1, batt = a.batt ?? 100;
   const bd = Math.min(50, Math.max(0, 100 - batt) * bp); if (bd > 0) out.push(Math.round(bd * 100) / 100);
   if (fv < 6 && hasCycles(m) && a.cyc != null && a.cyc !== "") { const cd = Math.min(50, Math.max(0, +a.cyc) / 100 * cp); if (cd > 0) out.push(Math.round(cd * 100) / 100); }
   return out;
 }
-function calcTradein(m, mem, a, s, fv = 6) {
+function calcTradein(m, mem, a, s, fv = 7) {
   const legacy = fv < 2;
   const mi = Math.max(0, m.mems.indexOf(mem));
   const market = m.market + m.step * mi;
@@ -349,7 +349,7 @@ function calcTradein(m, mem, a, s, fv = 6) {
   else k = 1 - s.grades[gi].pct / 100;
   if (a.box === "no") k *= 1 - s.noBoxPct / 100;
   if (!legacy) battAdj(m, a, s, fv).forEach(p => k *= 1 - p / 100);
-  const cu = fv >= 6 ? cycUsd(m, a, s) : 0;
+  const cu = fv === 6 ? cycUsd(m, a, s) : 0;
   return {usd: Math.max(0, Math.round((base * k - cu) * 100) / 100), points: pts, grade: s.grades[gi].label};
 }
 
@@ -1689,8 +1689,8 @@ function renderSettings() {
   <div class="panel"><h3 style="margin-top:0">Shartnoma shartlari</h3><p class="sub">Har bir sotib olish shartnomasiga avtomatik yoziladi. Bo'sh qoldirilsa, shartnomada "______" chiziq chiqadi (qo'lda yoziladi).</p>
     <div class="row"><div class="field"><label>Shartnoma amal qilish muddati, oy</label><input class="inp" id="ctMonths" inputmode="numeric" value="${esc(s.contract?.months || "")}" style="max-width:160px"></div>
     <div class="field"><label>Qo'shimcha shartlar</label><input class="inp" id="ctExtra" value="${esc(s.contract?.extra || "")}" placeholder="masalan: yo'q"></div></div></div>
-  <div class="panel"><h3 style="margin-top:0">Batareya ta'siri</h3><p class="sub">Sig'im narxdan foiz ayiradi, sikl esa har to'liq 500 sikl uchun qat'iy summa. Misol (1% va 20$): 90% → −10%; 1 100 sikl → −40$.</p>
-    <div class="row"><div class="field"><label>Har 1% sig'im kamayishi uchun, %</label>${num("battPct", s.battPct, 0.1)}</div><div class="field"><label>Har 500 sikl uchun, $ (iPhone 15+)</label>${num("cycUsd", s.cycUsd, 1)}</div></div></div>
+  <div class="panel"><h3 style="margin-top:0">Batareya ta'siri</h3><p class="sub">Narxdan faqat batareya sig'imi foiz ayiradi, sikl narxga ta'sir qilmaydi. Misol (1%): 90% → −10%.</p>
+    <div class="row"><div class="field"><label>Har 1% sig'im kamayishi uchun, %</label>${num("battPct", s.battPct, 0.1)}</div></div></div>
   <div class="panel"><h3 style="margin-top:0">Nasiya ustamalari</h3><div class="tw"><table><thead><tr><th>Muddat</th><th>Gacha, oy</th><th>Ustama, % / oy</th></tr></thead><tbody>
     ${s.tiers.map((t, i) => `<tr><td>${tFrom(i)}–${t.to} oy</td><td>${num(`tiers.${i}.to`, t.to)}</td><td>${num(`tiers.${i}.rate`, t.rate, 0.1)}</td></tr>`).join("")}</tbody></table></div></div>
   <div style="position:sticky;bottom:10px;display:flex;justify-content:flex-end;margin-bottom:16px"><button class="btn pri" id="saveSettings">Sozlamalarni saqlash</button></div>

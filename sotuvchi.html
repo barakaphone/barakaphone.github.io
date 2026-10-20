@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.20-4"></script>
+<script src="shartnoma.js?v=2026.10.20-5"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.20-4";
+const APP_VERSION = "2026.10.20-5";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -355,8 +355,6 @@ const stable = v => Array.isArray(v) ? "[" + v.map(stable).join(",") + "]" : v &
 /* ================= PRICING (admin panel bilan bir xil) ================= */
 function hasCycles(m) { return m && m.brand === "Apple" && /iPhone (1[5-9]|[2-9]\d|Air)/.test(m.name); }
 // Har 1% batareya kamayishi uchun battPct% (admin Sozlamalarda o'zgartiradi)
-// Batareya sikli: har to'liq 500 sikl uchun narxdan qat'iy summa ($) ayiriladi (sozlamada o'zgaradi, standart 20$)
-const cycUsd = (m, a, s) => hasCycles(m) && a.cyc != null && a.cyc !== "" ? Math.floor(Math.max(0, +a.cyc) / 500) * (s.cycUsd ?? 20) : 0;
 function battAdj(m, a, s) {
   const r = Math.round, out = [], bp = s.battPct ?? 1, cp = s.cycPct ?? 1, batt = a.batt ?? 100;
   const bd = Math.min(50, Math.max(0, 100 - batt) * bp); if (bd > 0) out.push([`Batareya ${batt}%`, r(bd * 100) / 100]);
@@ -377,8 +375,8 @@ function calcTradein(m, mem, a, s) {
   let k = 1; lines.forEach(l => k *= 1 - l[1] / 100); if (a.box === "no") k *= 1 - s.noBoxPct / 100;
   // Batareya sig'imi va sikli ham narxga to'g'ridan-to'g'ri ta'sir qiladi
   const adj = battAdj(m, a, s); adj.forEach(x => k *= 1 - x[1] / 100);
-  const cu = cycUsd(m, a, s), u = Math.max(0, Math.round((base * k - cu) * 100) / 100);
-  return {cycUsd: cu, usd: u, uzs: toUzs(u), points: pts, gi, grade: s.grades[gi].label, gradeLetter: ["A", "B", "C", "D"][Math.min(gi, 3)], lines, adj, sellUsd: Math.round(u * 100 / (100 - s.discPct))};
+  const u = Math.round(base * k * 100) / 100;
+  return {usd: u, uzs: toUzs(u), points: pts, gi, grade: s.grades[gi].label, gradeLetter: ["A", "B", "C", "D"][Math.min(gi, 3)], lines, adj, sellUsd: Math.round(u * 100 / (100 - s.discPct))};
 }
 const maxM = () => S.settings.tiers[S.settings.tiers.length - 1].to;
 const rateFor = m => (S.settings.tiers.find(t => m <= t.to) || S.settings.tiers[S.settings.tiers.length - 1]).rate;
@@ -711,7 +709,7 @@ function summaryHtml() {
   if (c.parts) h += `<div class="note">Telefon yoqilmaydi — faqat ehtiyot qism sifatida baholandi.</div>`;
   else h += `<div class="extra"><div><span class="t">Qutisi</span><span class="pill">${W.box === "no" ? "Yo'q" : "Bor"}</span></div><div><span class="t">Shikast</span><span class="pill">${esc(gradeName(c.gi))}</span></div><div><span class="t">Batareya</span><span class="pill">${W.batt}%${hasCycles(m) && W.cyc != null ? " · " + W.cyc + " sikl" : ""}</span></div></div>
     <div class="ptsbox"><div style="display:flex;justify-content:space-between"><b>Nuqsonlar</b><b>${c.points ? "−" + c.points + "%" : ""}</b></div><ul>${c.lines.length ? c.lines.map(l => `<li><span>${esc(l[0])}</span><span>−${l[1]}%</span></li>`).join("") : "<li><span>Nuqson topilmadi</span><span>0</span></li>"}</ul>
-    ${c.adj?.length || c.cycUsd ? `<div style="margin-top:8px"><b>Batareya ta'siri</b></div><ul>${(c.adj || []).map(l => `<li><span>${esc(l[0])}</span><span>−${l[1]}%</span></li>`).join("")}${c.cycUsd ? `<li><span>Batareya sikli: ${esc(W.cyc)}</span><span>−${c.cycUsd}$</span></li>` : ""}</ul>` : ""}
+    ${c.adj?.length ? `<div style="margin-top:8px"><b>Batareya ta'siri</b></div><ul>${c.adj.map(l => `<li><span>${esc(l[0])}</span><span>−${l[1]}%</span></li>`).join("")}</ul>` : ""}
     <div class="scale">${S.settings.grades.map((g, i) => `<div class="${i === c.gi ? "on" : ""}">${esc(gradeName(i))}</div>`).join("")}</div></div>`;
   return h + `<div class="price"><div class="price-top"><div class="ic">$</div><div><small>${c.manual ? "Qo'lda o'zgartirilgan narx" : "Hisoblangan narx"}</small><b>Trade-in qiymati</b></div><span class="usd">${usd(c.usd)}</span></div><div class="total"><span>Jami:</span><b>${sum(c.uzs)}</b></div></div>
   ${c.manual ? `<div class="note">Narx qo'lda o'zgartirildi. Hisoblangan: <b>${uzs(c.autoUzs)}</b> → yangi: <b>${uzs(c.uzs)}</b>.<br>Sabab: ${esc(W.manual.reason)}</div>
@@ -795,7 +793,7 @@ async function saveDeal() {
     b.set(dealRef, {
       branchId: S.me.branchId, sellerId: S.me.id, sellerName: S.me.fullName || "", client, contractNo,
       device: {modelId: m.id, brand: m.brand, name: m.name, mem: W.mem, color: W.color, imei: digits(W.imei), answers: answers(),
-               calc: {usd: c.usd, uzs: c.uzs, points: c.points, grade: c.grade, gradeLetter: c.gradeLetter, fv: 6},
+               calc: {usd: c.usd, uzs: c.uzs, points: c.points, grade: c.grade, gradeLetter: c.gradeLetter, fv: 7},
                ...(c.manual ? {manual: {uzs: c.uzs, autoUzs: c.autoUzs, reason: W.manual.reason, by: S.me.id, byName: S.me.fullName || ""}} : {})},
       deviceUsd: c.usd, deviceUzs: c.uzs, stockId: st.id, ourModel: `${st.modelName} ${st.mem || ""}`.trim(), ourUsd: st.sellUsd, ourUzs: our,
       diffUzs: diff, months, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0, kurs, newStockId: newRef.id, photoCount,
