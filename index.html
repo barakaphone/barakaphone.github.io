@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.19-15"></script>
+<script src="shartnoma.js?v=2026.10.20-1"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.19-15";
+const APP_VERSION = "2026.10.20-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -329,9 +329,12 @@ function battAdj(m, a, s) {
 function calcTradein(m, mem, a, s, fv = 5) {
   const legacy = fv < 2;
   const mi = Math.max(0, m.mems.indexOf(mem));
-  const market = m.market + m.step * mi;
+  // Yangi (ishlatilmagan) telefon — modelning alohida "Yangi" bozor narxidan, nuqsonlarsiz baholanadi
+  const isNew = a.cond === "new" && m.marketNew > 0;
+  const market = (isNew ? m.marketNew : m.market) + m.step * mi;
   const base = Math.round(market * (100 - s.discPct)) / 100;
   if (a.lock === "on") return {rejected: true, usd: 0, points: 0};
+  if (isNew && a.power !== "no") return {usd: base, points: 0, grade: "Yangi"};
   if (a.power === "no") { const u = Math.round(base * s.partsPct) / 100; return {parts: true, usd: u, points: 0, grade: "Ehtiyot qism"}; }
   let pts = 0;
   for (const k of ["screen","body","bio","cam","repair"]) { const o = (s.pts[k] || []).find(o => o.v === a[k]); if (o) pts += o.p; }
@@ -1685,9 +1688,9 @@ function renderSettings() {
     ${s.tiers.map((t, i) => `<tr><td>${tFrom(i)}–${t.to} oy</td><td>${num(`tiers.${i}.to`, t.to)}</td><td>${num(`tiers.${i}.rate`, t.rate, 0.1)}</td></tr>`).join("")}</tbody></table></div></div>
   <div style="position:sticky;bottom:10px;display:flex;justify-content:flex-end;margin-bottom:16px"><button class="btn pri" id="saveSettings">Sozlamalarni saqlash</button></div>
   <div class="panel"><h3 style="margin-top:0">Model narxlari</h3>
-    <p class="sub">Bozor narxi — a'lo holat, qutisi bilan, eng kichik xotira uchun ($). Har bir keyingi xotira pog'onasiga qo'shimcha summa qo'shiladi. O'zgartirish darhol saqlanadi.</p>
+    <p class="sub">B/U bozor narxi — ishlatilgan, a'lo holat, qutisi bilan, eng kichik xotira uchun ($). Yangi bozor narxi — ishlatilmagan (yangi) telefon uchun; kiritilsa, mijoz va sotuvchidan "Yangi yoki B/U?" so'raladi, yangi telefon nuqsonlarsiz shu narxdan baholanadi. Har bir keyingi xotira pog'onasiga qo'shimcha summa qo'shiladi. O'zgartirish darhol saqlanadi.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><input class="inp" id="mSearch" placeholder="Model qidirish" style="max-width:260px"><button class="btn gold" id="addModel">+ Model qo'shish</button></div>
-    <div class="tw"><table><thead><tr><th>Model</th><th>Xotiralar</th><th class="n">Bozor narxi, $</th><th class="n">+ pog'ona, $</th><th class="n">Olish narxi</th><th>Holat</th></tr></thead><tbody id="mRows"></tbody></table></div>
+    <div class="tw"><table><thead><tr><th>Model</th><th>Xotiralar</th><th class="n">B/U bozor narxi, $</th><th class="n">Yangi bozor narxi, $</th><th class="n">+ pog'ona, $</th><th class="n">Olish narxi</th><th>Holat</th></tr></thead><tbody id="mRows"></tbody></table></div>
   </div>`;
   const setPath = (obj, path, v) => { const ks = path.split("."); let o = obj; ks.slice(0, -1).forEach(k => o = o[k]); o[ks[ks.length - 1]] = v; };
   document.querySelectorAll("[data-set]").forEach(inp => inp.oninput = () => setPath(s, inp.dataset.set, +inp.value));
@@ -1706,11 +1709,12 @@ function renderSettings() {
     $("#mRows").innerHTML = S.models.filter(m => IN_RANGE(m) && (!q || (m.brand + " " + m.name).toLowerCase().includes(q))).map(m => `<tr>
       <td><b>${esc(m.name)}</b><div class="src">${esc(m.brand)} · <button class="btn sec sm" style="min-height:26px;padding:2px 8px;font-size:12px" data-mc="${m.id}">Ranglar: ${(m.colors || []).length}</button> <button class="btn ${m.img || appleImg(m.name) ? "sec" : "gold"} sm" style="min-height:26px;padding:2px 8px;font-size:12px" data-mimg="${m.id}">${m.img ? "Rasm ✓" : appleImg(m.name) ? "Rasm: Apple" : "+ Rasm"}</button></div></td><td class="src">${esc(m.mems.join(", "))}</td>
       <td class="n"><input class="inp sm" type="number" data-mk="${m.id}" value="${m.market}"></td>
+      <td class="n"><input class="inp sm" type="number" data-mn="${m.id}" value="${m.marketNew || ""}" placeholder="—" title="Bo'sh qoldirilsa, mijozdan Yangi/B-U so'ralmaydi"></td>
       <td class="n"><input class="inp sm" style="width:80px" type="number" data-ms="${m.id}" value="${m.step}"></td>
-      <td class="n">${uzs(toUzs(m.market * (100 - S.settings.discPct) / 100))}</td>
+      <td class="n">${uzs(toUzs(m.market * (100 - S.settings.discPct) / 100))}${m.marketNew > 0 ? `<div class="src">Yangi: ${uzs(toUzs(m.marketNew * (100 - S.settings.discPct) / 100))}</div>` : ""}</td>
       <td><button class="btn ${m.active !== false ? "sec" : "gold"} sm" data-ma="${m.id}">${m.active !== false ? "Yashirish" : "Ko'rsatish"}</button> <button class="btn bad sm" data-mdel="${m.id}" title="Modelni o'chirish">O'chirish</button></td></tr>`).join("");
-    document.querySelectorAll("[data-mk],[data-ms]").forEach(inp => inp.onchange = async () => {
-      const id = inp.dataset.mk || inp.dataset.ms, f = inp.dataset.mk ? "market" : "step", v = +inp.value; if (!(v >= 0)) return;
+    document.querySelectorAll("[data-mk],[data-ms],[data-mn]").forEach(inp => inp.onchange = async () => {
+      const id = inp.dataset.mk || inp.dataset.ms || inp.dataset.mn, f = inp.dataset.mk ? "market" : inp.dataset.mn ? "marketNew" : "step", v = +inp.value; if (!(v >= 0)) return;
       try { await updateDoc(doc(db, "models", id), {[f]: v}); S.models.find(m => m.id === id)[f] = v; rows(); toast("Saqlandi"); } catch (e) { toast(errText(e), true); }
     });
     document.querySelectorAll("[data-mc]").forEach(b => b.onclick = () => {
@@ -1744,7 +1748,7 @@ function addModelModal(done) {
     <div class="row"><div class="field"><label>Brend</label><input class="inp" id="amBrand" value="Apple"></div><div class="field"><label>Model</label><input class="inp" id="amName" placeholder="iPhone 18 Pro"></div></div>
     <div class="field"><label>Xotiralar (vergul bilan, kichigidan)</label><input class="inp" id="amMems" placeholder="256 GB, 512 GB, 1 TB"></div>
     <div class="field"><label>Ranglar (vergul bilan)</label><input class="inp" id="amColors"></div>
-    <div class="row"><div class="field"><label>Bozor narxi, $</label><input class="inp" id="amMarket" type="number"></div><div class="field"><label>+ pog'ona, $</label><input class="inp" id="amStep" type="number" value="0"></div></div>
+    <div class="row"><div class="field"><label>B/U bozor narxi, $</label><input class="inp" id="amMarket" type="number"></div><div class="field"><label>Yangi bozor narxi, $</label><input class="inp" id="amMarketNew" type="number" placeholder="ixtiyoriy"></div><div class="field"><label>+ pog'ona, $</label><input class="inp" id="amStep" type="number" value="0"></div></div>
     <div id="amPrev"></div>
     <div id="amErr" class="err hidden"></div>
     <div class="acts"><button class="btn sec" id="amCancel">Bekor qilish</button><button class="btn pri" id="amSave">Qo'shish</button></div>`);
@@ -1768,7 +1772,7 @@ function addModelModal(done) {
     $("#amSave").onclick = async () => {
       const split = v => v.split(",").map(x => x.trim()).filter(Boolean);
       const m = {brand: $("#amBrand").value.trim(), name: $("#amName").value.trim(), mems: split($("#amMems").value), colors: split($("#amColors").value),
-                 market: +$("#amMarket").value, step: +$("#amStep").value || 0, sort: Math.min(0, ...S.models.map(x => x.sort || 0)) - 1, active: true, custom: true};
+                 market: +$("#amMarket").value, marketNew: +$("#amMarketNew").value || 0, step: +$("#amStep").value || 0, sort: Math.min(0, ...S.models.map(x => x.sort || 0)) - 1, active: true, custom: true};
       if (!m.brand || !m.name || !m.mems.length || !(m.market > 0)) { $("#amErr").textContent = "Brend, model, xotira va narxni kiriting"; $("#amErr").classList.remove("hidden"); return; }
       if (S.models.some(x => x.name.toLowerCase() === m.name.toLowerCase() && IN_RANGE(x))) { $("#amErr").textContent = "Bu model ro'yxatda bor"; $("#amErr").classList.remove("hidden"); return; }
       if (appleImg(m.name)) m.img = appleImg(m.name);
