@@ -315,7 +315,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.20-1";
+const APP_VERSION = "2026.10.20-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -376,13 +376,10 @@ function battAdj(m, a, s) {
 }
 function calcTradein(m, mem, a, s) {
   const mi = Math.max(0, m.mems.indexOf(mem));
-  // Yangi (ishlatilmagan) telefon — modelning alohida "Yangi" bozor narxidan, nuqsonlarsiz baholanadi
-  const isNew = a.cond === "new" && m.marketNew > 0;
-  const market = (isNew ? m.marketNew : m.market) + m.step * mi;
+  const market = m.market + m.step * mi;
   const base = Math.round(market * (100 - s.discPct)) / 100;
   if (a.lock === "on") return {rejected: true, usd: 0, uzs: 0, points: 0, lines: []};
   if (a.power === "no") { const u = Math.round(base * s.partsPct) / 100; return {parts: true, usd: u, uzs: toUzs(u), points: 0, grade: "Ehtiyot qism", gradeLetter: "D", lines: [], sellUsd: Math.round(u * 100 / (100 - s.discPct))}; }
-  if (isNew) return {usd: base, uzs: toUzs(base), points: 0, gi: 0, grade: "Yangi", gradeLetter: "A", lines: [], adj: [], sellUsd: Math.round(base * 100 / (100 - s.discPct))};
   const lines = []; let pts = 0;
   const QN = {screen: "Ekran", body: "Korpus", bio: "Face ID / Touch ID", cam: "Kamera", repair: "Ta'mir"};
   for (const k of ["screen", "body", "bio", "cam", "repair"]) { const o = (s.pts[k] || []).find(o => o.v === a[k]); if (o && o.p) { pts += o.p; lines.push([QN[k] + ": " + o.label.toLowerCase(), o.p]); } }
@@ -523,7 +520,6 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
-  "Telefoningiz yangimi yoki ishlatilganmi?": "Ваш телефон новый или б/у?", "Yangi (ishlatilmagan)": "Новый (не использовался)", "B/U (ishlatilgan)": "Б/У (использовался)",
   "Qanday xarid qilasiz?": "Как хотите купить?", "Muddatli to'lovga olish": "Купить в рассрочку", "Oyma-oy bo'lib to'laysiz": "Оплата частями помесячно",
   "Trade-in: eski telefonimni topshirib olish": "Trade-in: сдать старый телефон", "Telefoningiz narxi ayirib tashlanadi": "Стоимость вашего телефона вычитается",
   "Muddatli to'lov": "Рассрочка", "Telefon narxi": "Цена телефона", "Narxlar yangilandi. Yangi hisobni ko'rib, arizani qayta yuboring": "Цены обновились. Проверьте расчёт и отправьте заявку снова",
@@ -638,7 +634,6 @@ const QS = [
   {k: "model", t: "iPhone'ingiz qaysi model?"},
   {k: "mem", t: "Xotira hajmi qancha?"},
   {k: "color", t: "Rangi qanday?"},
-  {k: "cond", t: "Telefoningiz yangimi yoki ishlatilganmi?", opts: [["new", "Yangi (ishlatilmagan)"], ["used", "B/U (ishlatilgan)"]], cond: () => curModel()?.marketNew > 0},
   {k: "screen", t: "Ekran holati qanday?", pts: 1, hint: "Ekranni yorug'da, turli burchakdan ko'zdan kechiring."},
   {k: "body", t: "Korpus holati qanday?", pts: 1, hint: "Yon ramka, burchaklar va orqa qopqoqni tekshiring."},
   {k: "batt", t: "Batareya sig'imi necha foiz?", hint: "Sozlamalar → Batareya → Batareya holati."},
@@ -647,9 +642,6 @@ const QS = [
   {k: "repair", t: "Telefon ta'mirlanganmi?", pts: 1, hint: "Sozlamalar → Umumiy → Ushbu qurilma haqida → Detallar va xizmat tarixi."},
   {k: "box", t: "Qutisi bormi?", opts: [["yes", "Ha, bor"], ["no", "Yo'q"]]}
 ];
-// Yangi telefon tanlansa — holat savollari (ekran, korpus, batareya...) so'ralmaydi
-const isNewDev = () => W.cond === "new" && curModel()?.marketNew > 0;
-QS.forEach(q => { if (["screen", "body", "batt", "cyc", "bio", "repair", "box"].includes(q.k)) { const c = q.cond; q.cond = () => !isNewDev() && (!c || c()); } });
 const SUMMARY = QS.length;
 // started — mijoz vitrinadan o'tdi; pre — telefon boshida tanlangan; sell — faqat sotish uchun murojaat
 function freshW() { return {started: false, pre: false, sell: false, buy: false, pick: false, step: 0, q: 0, hist: [], modelId: null, mem: null, color: "", screen: null, body: null, batt: 100, cyc: null, bio: null, repair: null, box: null, mq: "", stockId: null, q2: "", months: 6, name: "", phone: "", note: "", done: null, saving: false}; }
@@ -660,7 +652,7 @@ const GENERIC_COLORS = ["Qora", "Oq", "Kumush", "Kulrang", "Oltin", "Ko'k", "Yas
 const APPLE_COLORS = {"iphone-18-pro-max":["Black","Silver","Burgundy","Blue"],"iphone-18-pro":["Black","Silver","Burgundy","Glacier Blue"],"iphone-17-pro-max":["Cosmic Orange","Deep Blue","Silver"],"iphone-17-pro":["Cosmic Orange","Deep Blue","Silver"],"iphone-air":["Space Black","Cloud White","Light Gold","Sky Blue"],"iphone-17":["Black","White","Lavender","Mist Blue","Sage"],"iphone-16-pro-max":["Black Titanium","White Titanium","Natural Titanium","Desert Titanium"],"iphone-16-pro":["Black Titanium","White Titanium","Natural Titanium","Desert Titanium"],"iphone-16-plus":["Black","White","Pink","Teal","Ultramarine"],"iphone-16":["Black","White","Pink","Teal","Ultramarine"],"iphone-16e":["Black","White"],"iphone-15-pro-max":["Black Titanium","White Titanium","Blue Titanium","Natural Titanium"],"iphone-15-pro":["Black Titanium","White Titanium","Blue Titanium","Natural Titanium"],"iphone-15-plus":["Black","Blue","Green","Yellow","Pink"],"iphone-15":["Black","Blue","Green","Yellow","Pink"],"iphone-14-pro-max":["Space Black","Silver","Gold","Deep Purple"],"iphone-14-pro":["Space Black","Silver","Gold","Deep Purple"],"iphone-14-plus":["Midnight","Starlight","Purple","Blue","Yellow","(PRODUCT)RED"],"iphone-14":["Midnight","Starlight","Purple","Blue","Yellow","(PRODUCT)RED"],"iphone-se-2022":["Midnight","Starlight","(PRODUCT)RED"],"iphone-13-pro-max":["Graphite","Gold","Silver","Sierra Blue","Alpine Green"],"iphone-13-pro":["Graphite","Gold","Silver","Sierra Blue","Alpine Green"],"iphone-13":["Midnight","Starlight","Blue","Pink","Green","(PRODUCT)RED"],"iphone-13-mini":["Midnight","Starlight","Blue","Pink","Green","(PRODUCT)RED"],"iphone-12-pro-max":["Graphite","Silver","Gold","Pacific Blue"],"iphone-12-pro":["Graphite","Silver","Gold","Pacific Blue"],"iphone-12":["Black","White","Blue","Green","Purple","(PRODUCT)RED"],"iphone-12-mini":["Black","White","Blue","Green","Purple","(PRODUCT)RED"],"iphone-11-pro-max":["Space Gray","Silver","Gold","Midnight Green"],"iphone-11-pro":["Space Gray","Silver","Gold","Midnight Green"],"iphone-11":["Black","White","Purple","Yellow","Green","(PRODUCT)RED"],"iphone-xs-max":["Space Gray","Silver","Gold"],"iphone-xs":["Space Gray","Silver","Gold"],"iphone-xr":["Black","White","Blue","Yellow","Coral","(PRODUCT)RED"],"galaxy-s25-ultra":["Titanium Silverblue","Titanium Black","Titanium Gray","Titanium Whitesilver"],"galaxy-s25":["Navy","Icyblue","Mint","Silver Shadow"],"galaxy-z-fold6":["Silver Shadow","Pink","Navy"],"galaxy-z-flip6":["Blue","Yellow","Mint","Silver Shadow"],"galaxy-s24-ultra":["Titanium Black","Titanium Gray","Titanium Violet","Titanium Yellow"],"galaxy-s24":["Onyx Black","Marble Grey","Cobalt Violet","Amber Yellow"],"galaxy-s23-ultra":["Phantom Black","Cream","Green","Lavender"],"galaxy-s23":["Phantom Black","Cream","Green","Lavender"],"galaxy-a55":["Awesome Navy","Awesome Iceblue","Awesome Lilac","Awesome Lemon"],"galaxy-a35":["Awesome Navy","Awesome Iceblue","Awesome Lilac","Awesome Lemon"],"galaxy-a54":["Awesome Graphite","Awesome White","Awesome Violet","Awesome Lime"],"xiaomi-14t-pro":["Titan Black","Titan Gray","Titan Blue"],"xiaomi-14t":["Titan Black","Titan Gray","Titan Blue","Lemon Green"],"xiaomi-13t-pro":["Black","Alpine Blue","Meadow Green"],"xiaomi-13t":["Black","Alpine Blue","Meadow Green"],"redmi-note-14-pro":["Midnight Black","Ocean Blue","Lavender Purple"],"redmi-note-13-pro":["Midnight Black","Forest Green","Lavender Purple"],"redmi-note-13":["Midnight Black","Mint Green","Ice Blue","Ocean Sunset"]};
 const appleColorsOf = m => { const s = String(m?.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); return APPLE_COLORS[{"iphone-17-air": "iphone-air"}[s] || s] || []; };
 const colorsOf = m => (m?.colors || []).length ? m.colors : appleColorsOf(m).length ? appleColorsOf(m) : GENERIC_COLORS;
-const answers = () => ({cond: isNewDev() ? "new" : "used", power: "yes", lock: "off", screen: W.screen, body: W.body, batt: W.batt, cyc: hasCycles(curModel()) ? W.cyc : null, bio: W.bio, cam: "ok", repair: W.repair, box: W.box});
+const answers = () => ({power: "yes", lock: "off", screen: W.screen, body: W.body, batt: W.batt, cyc: hasCycles(curModel()) ? W.cyc : null, bio: W.bio, cam: "ok", repair: W.repair, box: W.box});
 const clientCalc = () => { const m = curModel(); return m && W.mem ? calcTradein(m, W.mem, answers(), S.settings) : null; };
 const ourStock = () => W.sell ? null : S.stock.find(s => s.id === W.stockId);
 const diffUzs = () => { const s = ourStock(), c = clientCalc(); if (W.buy) return s ? toUzs(s.sellUsd) : 0; return s && c ? toUzs(s.sellUsd) - c.uzs : 0; };
@@ -850,7 +842,7 @@ function renderAction() {
 }
 const refreshNext = () => { const b = document.querySelector("[data-act=next]"); if (b) b.disabled = !canNext(); };
 function answer(k, v) {
-  if (k === "model") { if (W.modelId !== v) { W.mem = null; W.color = ""; W.cond = null; } W.modelId = v; } else W[k] = v;
+  if (k === "model") { if (W.modelId !== v) { W.mem = null; W.color = ""; } W.modelId = v; } else W[k] = v;
   let next = W.q + 1; while (QS[next] && QS[next].cond && !QS[next].cond()) next++;
   W.hist.push(W.q); W.q = next; renderWizard(); window.scrollTo(0, 0);
 }
