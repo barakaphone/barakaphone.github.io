@@ -36,6 +36,13 @@ service cloud.firestore {
     function changed()    { return request.resource.data.diff(resource.data).affectedKeys(); }
     function str(v, max)  { return v is string && v.size() <= max; }
     function num(v)       { return v is int || v is float; }
+    // "Bog'lanildi" yozuvi (kim, qachon, dalil) bir marta yoziladi: keyin hech kim (admin ham) o'zgartira yoki o'chira olmaydi,
+    // yozayotgan odam esa faqat o'z nomidan yoza oladi
+    function contactKept() {
+      return ('contact' in resource.data)
+        ? ('contact' in request.resource.data) && request.resource.data.contact == resource.data.contact
+        : !('contact' in request.resource.data) || request.resource.data.contact.by == request.auth.uid;
+    }
 
     // ---------- Tizimni birinchi sozlash ----------
     // Faqat bir marta: meta/setup hali yo'q bo'lsa, birinchi admin o'zini yozadi.
@@ -157,7 +164,7 @@ service cloud.firestore {
       // Xodimlar: admin hammasini, sotuvchi o'z filiali va filiali tanlanmagan ("") arizalarni ko'radi
       allow read: if isAdmin() || isSmm() || (isStaff() && resource.data.branchId in [myBranch(), '']) || isOffice();
       // smm: faqat "Yangi" → "Bog'lanildi", o'z nomi bilan va shu paketda joylangan foto/audio dalil bilan
-      allow update: if isAdmin()
+      allow update: if contactKept() && (isAdmin()
                     || (isSmm() && resource.data.status == 'yangi' && newData().status == 'aloqa'
                         && changed().hasOnly(['status', 'contact', 'updatedAt', 'updatedBy', 'updatedByName'])
                         && newData().updatedBy == request.auth.uid && newData().contact.by == request.auth.uid
@@ -165,8 +172,9 @@ service cloud.firestore {
                         && getAfter(/databases/$(database)/documents/media/$(newData().contact.mediaId)).data.arzId == id
                         && getAfter(/databases/$(database)/documents/media/$(newData().contact.mediaId)).data.createdBy == request.auth.uid)
                     || (isStaff() && (resource.data.branchId in [myBranch(), ''] || isOffice())
-                        && !changed().hasAny(['client', 'no', 'createdAt', 'branchId']));
-      allow delete: if isAdmin();
+                        && !changed().hasAny(['client', 'no', 'createdAt', 'branchId'])));
+      // Bog'lanish yozilgan arizani faqat tizim egasi o'chira oladi
+      allow delete: if isAdmin() && (!('contact' in resource.data) || isOwner());
     }
 
     // ---------- Bog'lanish dalili (foto yoki audio) — faqat admin ko'radi ----------
@@ -177,8 +185,9 @@ service cloud.firestore {
                     && newData().createdBy == request.auth.uid && newData().createdAt == request.time
                     && newData().kind in ['photo', 'audio'] && str(newData().data, 990000)
                     && str(newData().arzId, 40) && str(newData().get('byName', ''), 80);
+      // Dalilni hech kim o'zgartira olmaydi; o'chirish — faqat tizim egasi
       allow update: if false;
-      allow delete: if isAdmin();
+      allow delete: if isOwner();
     }
 
     // Boshqa hamma narsa — yopiq
