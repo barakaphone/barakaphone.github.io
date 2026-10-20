@@ -315,7 +315,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.20-3";
+const APP_VERSION = "2026.10.20-4";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -367,11 +367,13 @@ function closeModal() { $("#modalRoot").innerHTML = ""; }
 
 /* ================= PRICING (sotuvchi ilovasi bilan bir xil) ================= */
 function hasCycles(m) { return m && m.brand === "Apple" && /iPhone (1[5-9]|[2-9]\d|Air)/.test(m.name); }
-// Har 1% batareya kamayishi uchun battPct%, har 100 sikl uchun cycPct% (admin Sozlamalarda o'zgartiradi)
+// Har 1% batareya kamayishi uchun battPct% (admin Sozlamalarda o'zgartiradi)
+// Batareya sikli: har to'liq 500 sikl uchun narxdan qat'iy summa ($) ayiriladi (sozlamada o'zgaradi, standart 20$)
+const cycUsd = (m, a, s) => hasCycles(m) && a.cyc != null && a.cyc !== "" ? Math.floor(Math.max(0, +a.cyc) / 500) * (s.cycUsd ?? 20) : 0;
 function battAdj(m, a, s) {
   const r = Math.round, out = [], bp = s.battPct ?? 1, cp = s.cycPct ?? 1, batt = a.batt ?? 100;
   const bd = Math.min(50, Math.max(0, 100 - batt) * bp); if (bd > 0) out.push([`Batareya ${batt}%`, r(bd * 100) / 100]);
-  if (hasCycles(m) && a.cyc != null && a.cyc !== "") { const cd = Math.min(50, Math.max(0, +a.cyc) / 100 * cp); if (cd > 0) out.push([`Batareya sikli: ${a.cyc}`, r(cd * 100) / 100]); }
+  // Sikl narxga ta'sir qilmaydi — faqat sig'im
   return out;
 }
 function calcTradein(m, mem, a, s) {
@@ -388,8 +390,8 @@ function calcTradein(m, mem, a, s) {
   let k = 1; lines.forEach(l => k *= 1 - l[1] / 100); if (a.box === "no") k *= 1 - s.noBoxPct / 100;
   // Batareya sig'imi va sikli ham narxga to'g'ridan-to'g'ri ta'sir qiladi
   const adj = battAdj(m, a, s); adj.forEach(x => k *= 1 - x[1] / 100);
-  const u = Math.round(base * k * 100) / 100;
-  return {usd: u, uzs: toUzs(u), points: pts, gi, grade: s.grades[gi].label, gradeLetter: ["A", "B", "C", "D"][Math.min(gi, 3)], lines, adj, sellUsd: Math.round(u * 100 / (100 - s.discPct))};
+  const cu = cycUsd(m, a, s), u = Math.max(0, Math.round((base * k - cu) * 100) / 100);
+  return {cycUsd: cu, usd: u, uzs: toUzs(u), points: pts, gi, grade: s.grades[gi].label, gradeLetter: ["A", "B", "C", "D"][Math.min(gi, 3)], lines, adj, sellUsd: Math.round(u * 100 / (100 - s.discPct))};
 }
 const maxM = () => S.settings.tiers[S.settings.tiers.length - 1].to;
 const rateFor = m => (S.settings.tiers.find(t => m <= t.to) || S.settings.tiers[S.settings.tiers.length - 1]).rate;
@@ -885,7 +887,7 @@ async function saveAriza() {
       status: "yangi", no, branchId: st?.branchId || "",
       client: {name: W.name.slice(0, 60), phone}, note: W.note.slice(0, 500),
       device: {modelId: m.id, brand: m.brand, name: m.name, mem: W.mem, color: W.color, answers: answers(),
-               calc: {usd: c.usd, uzs: c.uzs, points: c.points, grade: c.grade, gradeLetter: c.gradeLetter || "D", fv: 5}},
+               calc: {usd: c.usd, uzs: c.uzs, points: c.points, grade: c.grade, gradeLetter: c.gradeLetter || "D", fv: 6}},
       deviceUzs: c.uzs, stockId: st ? st.id : "", ourModel: st ? `${st.modelName} ${st.mem || ""}`.trim() : "", ourUzs: st ? toUzs(st.sellUsd) : 0,
       diffUzs: diff, payType: p ? "nasiya" : "", months: p ? W.months : 0, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0,
       kurs: S.settings.kurs, createdAt: serverTimestamp()});
