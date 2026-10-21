@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.21-1"></script>
+<script src="shartnoma.js?v=2026.10.21-2"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.21-1";
+const APP_VERSION = "2026.10.21-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -1384,8 +1384,13 @@ function startArzLive() {
     first = false;
   }, e => console.warn("arizalar live", e));
 }
+// Hudud filtri: mijoz arizada tanlagan viloyat ("Hudud: Farg'ona viloyati, Qo'qon")
+const regOf = x => (/^Hudud: ([^,]+)/.exec(x.note || "") || [])[1] || "";
+const regSelHtml = list => { const m = {}; list.forEach(a => { const r = regOf(a) || "-"; m[r] = (m[r] || 0) + 1; });
+  return `<select class="inp" id="arzReg" style="max-width:280px;margin-bottom:10px"><option value="">📍 Barcha hududlar · ${list.length}</option>${Object.keys(m).filter(r => r !== "-").sort((a, b) => m[b] - m[a]).map(r => `<option value="${esc(r)}" ${S.arzReg === r ? "selected" : ""}>${esc(r)} · ${m[r]}</option>`).join("")}${m["-"] ? `<option value="-" ${S.arzReg === "-" ? "selected" : ""}>Hudud ko'rsatilmagan · ${m["-"]}</option>` : ""}</select>`; };
+const regMatch = a => !S.arzReg || (S.arzReg === "-" ? !regOf(a) : regOf(a) === S.arzReg);
 function renderArizalar() {
-  const url = mijozUrl(), all = S.arizalar.filter(inBranch), cnt = k => k === "all" ? all.length : all.filter(a => a.status === k).length;
+  const url = mijozUrl(), inB = S.arizalar.filter(inBranch), all = inB.filter(regMatch), cnt = k => k === "all" ? all.length : all.filter(a => a.status === k).length;
   const items = S.arzFilter === "all" ? all : all.filter(a => a.status === S.arzFilter);
   $("#page").innerHTML = `
   <div class="panel"><h3 style="margin-top:0">Mijozlar uchun sahifa</h3><div class="qrwrap"><div class="qr">${qrSvg(url)}</div>
@@ -1393,9 +1398,11 @@ function renderArizalar() {
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn gold sm" id="qrPng">QR-kodni yuklab olish (PNG)</button><button class="btn sec sm" id="qrPrint">Chop etish</button><button class="btn sec sm" id="qrCopy">Havolani nusxalash</button><a class="btn sec sm" href="${esc(url)}" target="_blank" rel="noopener">Sahifani ochish</a></div></div></div></div>
   ${S.arzOk ? "" : `<div class="err">Arizalarni o'qib bo'lmadi: Firebase ruxsat qoidalari hali yangilanmagan. Repozitoriydagi FIREBASE_QOIDALARI.md faylidagi ko'rsatmani bajaring.</div>`}
   ${imeiSearchHtml()}
+  ${regSelHtml(inB)}
   <div class="chips">${[["yangi", "Yangi"], ["aloqa", "Bog'lanildi"], ["olindi", "Sotib olindi"], ["sotuvda", "Sotuvga chiqarildi"], ["yakunlandi", "Yakunlandi"], ["bekor", "Bekor qilindi"], ["all", "Hammasi"]].map(([k, l]) => `<button class="chip ${S.arzFilter === k ? "on" : ""}" data-af="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
   ${items.length ? items.map(arzCard).join("") : `<div class="panel empty">Bu bo'limda ariza yo'q.</div>`}`;
   document.querySelectorAll("[data-af]").forEach(b => b.onclick = () => { S.arzFilter = b.dataset.af; renderArizalar(); });
+  $("#arzReg").onchange = e => { S.arzReg = e.target.value; renderArizalar(); };
   $("#qrCopy").onclick = async () => { try { await navigator.clipboard.writeText(url); toast("Havola nusxalandi"); } catch { prompt("Havolani nusxalang:", url); } };
   $("#qrPng").onclick = () => { const a = document.createElement("a"); a.href = qrPoster(url); a.download = "baraka-mijoz-qr.png"; document.body.appendChild(a); a.click(); a.remove(); };
   $("#qrPrint").onclick = () => {
