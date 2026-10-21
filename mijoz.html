@@ -315,7 +315,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.21-3";
+const APP_VERSION = "2026.10.21-4";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -520,7 +520,7 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
-  "Hududingiz *": "Ваш регион *", "— viloyatni tanlang —": "— выберите область —", "Shahar yoki tuman": "Город или район", "masalan: Qo'qon": "например: Коканд", "Hududingizni tanlang": "Выберите ваш регион",
+  "Hududingiz *": "Ваш регион *", "— hududni tanlang —": "— выберите регион —", "Shahar yoki tuman": "Город или район", "masalan: Qo'qon": "например: Коканд", "Hududingizni tanlang": "Выберите ваш регион",
   "Qanday xarid qilasiz?": "Как хотите купить?", "Muddatli to'lovga olish": "Купить в рассрочку", "Oyma-oy bo'lib to'laysiz": "Оплата частями помесячно",
   "Trade-in: eski telefonimni topshirib olish": "Trade-in: сдать старый телефон", "Telefoningiz narxi ayirib tashlanadi": "Стоимость вашего телефона вычитается",
   "Muddatli to'lov": "Рассрочка", "Telefon narxi": "Цена телефона", "Narxlar yangilandi. Yangi hisobni ko'rib, arizani qayta yuboring": "Цены обновились. Проверьте расчёт и отправьте заявку снова",
@@ -811,8 +811,7 @@ function planHtml(diff) {
   <p class="hint">${t("Shartnoma do'konda pasport bilan rasmiylashtiriladi.")}</p>`;
 }
 // Mijoz qaysi hududdan — arizada "Hudud: ..." bo'lib ko'rinadi
-const REGIONS = ["Farg'ona viloyati", "Andijon viloyati", "Namangan viloyati", "Toshkent shahri", "Toshkent viloyati", "Samarqand viloyati", "Buxoro viloyati", "Navoiy viloyati",
-  "Qashqadaryo viloyati", "Surxondaryo viloyati", "Jizzax viloyati", "Sirdaryo viloyati", "Xorazm viloyati", "Qoraqalpog'iston Respublikasi", "Boshqa davlat"];
+const REGIONS = ["Toshkent", "Andijon", "Farg'ona", "Qo'qon"];
 function formHtml() {
   const s = ourStock(), c = clientCalc(), diff = diffUzs(), p = needPlan() ? plan(diff, W.months) : null;
   const top = W.buy
@@ -834,8 +833,7 @@ function formHtml() {
   <h3>${t("Bog'lanish uchun")}</h3>
   <div class="field"><label for="fName">${t("Ismingiz *")}</label><input class="inp" id="fName" autocomplete="name" maxlength="60" value="${esc(W.name)}"></div>
   <div class="field"><label for="fPhone">${t("Telefon raqamingiz *")}</label><div class="phin"><span>+998</span><input class="inp" id="fPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(90) 123-45-67" value="${esc(fmt9(W.phone))}"></div></div>
-  <div class="field"><label for="fReg">${t("Hududingiz *")}</label><select class="inp" id="fReg"><option value="">${t("— viloyatni tanlang —")}</option>${REGIONS.map(r => `<option ${W.region === r ? "selected" : ""}>${esc(r)}</option>`).join("")}</select></div>
-  <div class="field"><label for="fCity">${t("Shahar yoki tuman")}</label><input class="inp" id="fCity" maxlength="40" placeholder="${esc(t("masalan: Qo'qon"))}" value="${esc(W.city || "")}"></div>
+  <div class="field"><label for="fReg">${t("Hududingiz *")}</label><select class="inp" id="fReg"><option value="">${t("— hududni tanlang —")}</option>${REGIONS.map(r => `<option ${W.region === r ? "selected" : ""}>${esc(r)}</option>`).join("")}</select></div>
   <div id="saveErr" class="err hidden"></div>`;
 }
 function renderAction() {
