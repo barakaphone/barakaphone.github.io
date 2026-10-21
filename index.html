@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.20-9"></script>
+<script src="shartnoma.js?v=2026.10.21-1"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.20-9";
+const APP_VERSION = "2026.10.21-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -961,7 +961,7 @@ function arzCard(x) {
     <div><div class="k">Olmoqchi</div><div class="v">${x.ourModel ? esc(x.ourModel) : "—"}</div>${x.ourModel ? `<div class="src">${uzs(x.ourUzs)}</div>` : ""}</div>
     <div><div class="k">To'lov</div><div class="v" style="white-space:normal">${esc(pay)}</div></div>
   </div>
-  ${x.note ? `<div class="note" style="margin-bottom:0"><b>Izoh:</b> ${esc(x.note)}</div>` : ""}
+  ${x.note ? (/^Hudud: /.test(x.note) ? `<div class="src" style="margin-top:8px;font-size:14px">📍 <b>${esc(x.note)}</b></div>` : `<div class="note" style="margin-bottom:0"><b>Izoh:</b> ${esc(x.note)}</div>`) : ""}
   ${contactHtml(x)}
   ${x.updatedByName ? `<div class="src" style="margin-top:8px">Oxirgi o'zgartirish: ${esc(x.updatedByName)}, ${fdt(x.updatedAt)}</div>` : ""}
   ${buyInfoHtml(x)}

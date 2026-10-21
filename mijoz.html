@@ -315,7 +315,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.20-9";
+const APP_VERSION = "2026.10.21-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -520,6 +520,7 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
+  "Hududingiz *": "Ваш регион *", "— viloyatni tanlang —": "— выберите область —", "Shahar yoki tuman": "Город или район", "masalan: Qo'qon": "например: Коканд", "Hududingizni tanlang": "Выберите ваш регион",
   "Qanday xarid qilasiz?": "Как хотите купить?", "Muddatli to'lovga olish": "Купить в рассрочку", "Oyma-oy bo'lib to'laysiz": "Оплата частями помесячно",
   "Trade-in: eski telefonimni topshirib olish": "Trade-in: сдать старый телефон", "Telefoningiz narxi ayirib tashlanadi": "Стоимость вашего телефона вычитается",
   "Muddatli to'lov": "Рассрочка", "Telefon narxi": "Цена телефона", "Narxlar yangilandi. Yangi hisobni ko'rib, arizani qayta yuboring": "Цены обновились. Проверьте расчёт и отправьте заявку снова",
@@ -809,6 +810,9 @@ function planHtml(diff) {
   <div class="extra two"><div><span class="t">${t("Muddat")}</span><b>${t("{n} oy", {n: W.months})}</b></div><div><span class="t">${t("Jami to'lov")}</span><b>${sum(p.total)}</b></div></div>
   <p class="hint">${t("Shartnoma do'konda pasport bilan rasmiylashtiriladi.")}</p>`;
 }
+// Mijoz qaysi hududdan — arizada "Hudud: ..." bo'lib ko'rinadi
+const REGIONS = ["Farg'ona viloyati", "Andijon viloyati", "Namangan viloyati", "Toshkent shahri", "Toshkent viloyati", "Samarqand viloyati", "Buxoro viloyati", "Navoiy viloyati",
+  "Qashqadaryo viloyati", "Surxondaryo viloyati", "Jizzax viloyati", "Sirdaryo viloyati", "Xorazm viloyati", "Qoraqalpog'iston Respublikasi", "Boshqa davlat"];
 function formHtml() {
   const s = ourStock(), c = clientCalc(), diff = diffUzs(), p = needPlan() ? plan(diff, W.months) : null;
   const top = W.buy
@@ -830,6 +834,8 @@ function formHtml() {
   <h3>${t("Bog'lanish uchun")}</h3>
   <div class="field"><label for="fName">${t("Ismingiz *")}</label><input class="inp" id="fName" autocomplete="name" maxlength="60" value="${esc(W.name)}"></div>
   <div class="field"><label for="fPhone">${t("Telefon raqamingiz *")}</label><div class="phin"><span>+998</span><input class="inp" id="fPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(90) 123-45-67" value="${esc(fmt9(W.phone))}"></div></div>
+  <div class="field"><label for="fReg">${t("Hududingiz *")}</label><select class="inp" id="fReg"><option value="">${t("— viloyatni tanlang —")}</option>${REGIONS.map(r => `<option ${W.region === r ? "selected" : ""}>${esc(r)}</option>`).join("")}</select></div>
+  <div class="field"><label for="fCity">${t("Shahar yoki tuman")}</label><input class="inp" id="fCity" maxlength="40" placeholder="${esc(t("masalan: Qo'qon"))}" value="${esc(W.city || "")}"></div>
   <div id="saveErr" class="err hidden"></div>`;
 }
 function renderAction() {
@@ -864,9 +870,11 @@ async function saveAriza() {
   // Telefon avtomatik to'ldirgan qiymat "input" hodisasisiz ham bo'lishi mumkin — maydonning o'zidan o'qiymiz
   if ($("#fName")) W.name = $("#fName").value;
   if ($("#fPhone")) { let d = digits($("#fPhone").value); if (d.length > 9 && d.startsWith("998")) d = d.slice(3); W.phone = d.slice(0, 9); }
-  W.name = W.name.trim(); W.note = "";
+  W.name = W.name.trim(); W.region = $("#fReg")?.value || ""; W.city = ($("#fCity")?.value || "").trim().slice(0, 40);
+  W.note = W.region ? `Hudud: ${W.region}${W.city ? ", " + W.city : ""}` : "";
   if (W.name.length < 2) return fail(t("Ismingizni yozing"));
   if (!phoneOk()) { $("#fPhone")?.classList.add("err"); return fail(t("Telefon raqamini to'liq yozing: kod va 7 ta raqam")); }
+  if (!W.region) { $("#fReg")?.classList.add("err"); return fail(t("Hududingizni tanlang")); }
   const c = clientCalc(), m = curModel(), st = ourStock();
   if (W.buy) return saveBuy(st);
   if (!c) return;
@@ -905,7 +913,7 @@ async function saveBuy(st) {
     if (stable(fresh) !== stable(S.settings)) { S.settings = fresh; W.saving = false; renderWizard(); return toast(t("Narxlar yangilandi. Yangi hisobni ko'rib, arizani qayta yuboring"), true); }
     const price = toUzs(st.sellUsd), p = plan(price, W.months);
     const ref = doc(collection(db, "arizalar")), no = ref.id.slice(0, 6).toUpperCase(), phone = "998" + W.phone;
-    await setDoc(ref, {status: "yangi", no, branchId: st.branchId || "", client: {name: W.name.slice(0, 60), phone}, note: "",
+    await setDoc(ref, {status: "yangi", no, branchId: st.branchId || "", client: {name: W.name.slice(0, 60), phone}, note: W.note.slice(0, 500),
       device: {}, deviceUzs: 0, stockId: st.id, ourModel: `${st.modelName} ${st.mem || ""}`.trim(), ourUzs: price,
       diffUzs: price, payType: "nasiya", months: W.months, monthlyUzs: p.monthly, totalUzs: p.total, kurs: S.settings.kurs, createdAt: serverTimestamp()});
     try { window.fbq && window.fbq("track", "Lead"); } catch {}
@@ -954,6 +962,8 @@ document.addEventListener("input", e => {
   if (id === "mRange") { W.months = +el.value; el.style.setProperty("--p", rngPct(W.months)); $("#mRangeVal").textContent = t("{n} oy", {n: W.months}); $("#planBox").innerHTML = planHtml(diffUzs()); return; }
   if (id === "fName" || id === "fPhone") $("#saveErr")?.classList.add("hidden");
   if (id === "fName") W.name = el.value;
+  if (id === "fCity") W.city = el.value;
+  if (id === "fReg") { W.region = el.value; el.classList.remove("err"); $("#saveErr")?.classList.add("hidden"); }
   if (id === "fPhone") {
     // +998 doim turadi: to'liq raqam qo'yilsa ham boshidagi 998 olib tashlanadi
     let d = digits(el.value); if (d.length > 9 && d.startsWith("998")) d = d.slice(3);
