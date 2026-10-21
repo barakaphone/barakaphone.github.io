@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.21-5"></script>
+<script src="shartnoma.js?v=2026.10.21-6"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.21-5";
+const APP_VERSION = "2026.10.21-6";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -1092,7 +1092,7 @@ function renderBuyModal() {
     modal(`<h2>Telefon sotib olindi — 1/3: tekshiruv</h2>${info}
     <div class="lbl" style="margin-bottom:6px">Telefon holati</div>
     <div style="display:flex;gap:6px;margin-bottom:12px"><button class="btn sm ${c.cond === "bu" ? "pri" : "sec"}" data-bcond="bu">B/U</button><button class="btn sm ${c.cond === "yangi" ? "pri" : "sec"}" data-bcond="yangi">Yangi (vakuumda)</button></div>
-    ${BUY_CHECKS.filter(([, , need]) => !need || need(c)).map(([k, t]) => `<label class="bchk"><input type="checkbox" data-bchk="${k}" ${c[k] ? "checked" : ""}> <span>${esc(t)}</span></label>`).join("")}
+    ${BUY_CHECKS.filter(([, , need]) => !need || need(c)).map(([k, t]) => `<label class="bchk"><input type="checkbox" data-bchk="${k}" ${c[k] ? "checked" : ""}> <span>${esc(t)}</span></label>${k === "vakuum" ? `<a class="btn sec sm" href="https://checkcoverage.apple.com/" target="_blank" rel="noopener" style="display:inline-flex;margin:0 0 10px 30px">🔗 checkcoverage.apple.com — seriya raqamini tekshirish</a>` : ""}`).join("")}
     <div class="lbl" style="margin:12px 0 6px">Orqa qopqog'i</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm ${c.back === "ok" ? "pri" : "sec"}" data-bback="ok">Joyida</button><button class="btn sm ${c.back === "none" ? "bad" : "sec"}" data-bback="none">Yo'q${backUsd ? ` (narxdan −$${backUsd})` : ""}</button></div>
     <div id="bErr" class="err hidden"></div>
