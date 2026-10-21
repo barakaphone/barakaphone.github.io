@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.21-6"></script>
+<script src="shartnoma.js?v=2026.10.21-7"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.21-6";
+const APP_VERSION = "2026.10.21-7";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -938,7 +938,7 @@ const battTxt = a => a?.batt != null ? `🔋 ${a.batt}%${a.cyc != null && a.cyc 
 function contactHtml(x) {
   const c = x.contact; if (!c?.byName) return "";
   return `<div class="note" style="margin:10px 0 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">📞 Bog'lanildi: <b>${esc(c.byName)}</b>, ${fdt(c.at)}${c.priceOnly ? ' <span class="badge gold">Narx bilish uchun</span>' : ""}
-    ${c.mediaId ? `<button class="btn sec sm" data-media="${esc(c.mediaId)}">${c.kind === "audio" ? "🎧 Audioni eshitish" : "🖼 Rasmni ko'rish"}</button>` : ""}</div>`;
+    ${c.mediaId && c.kind !== "none" ? `<button class="btn sec sm" data-media="${esc(c.mediaId)}">${c.kind === "audio" ? "🎧 Audioni eshitish" : "🖼 Rasmni ko'rish"}</button>` : ""}</div>`;
 }
 async function showMedia(id) {
   modal(`<h2>Bog'lanish dalili</h2><div id="mdBox" class="loading">Yuklanmoqda…</div><div class="acts"><button class="btn sec" id="mdClose">Yopish</button></div>`);

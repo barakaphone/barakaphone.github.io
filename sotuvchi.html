@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.21-6"></script>
+<script src="shartnoma.js?v=2026.10.21-7"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.21-6";
+const APP_VERSION = "2026.10.21-7";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -950,7 +950,7 @@ function arzCard(x) {
     <div class="src">Olmoqchi: <b>${x.ourModel ? esc(x.ourModel) + " (" + uzs(x.ourUzs) + ")" : "tanlamagan"}</b> · ${esc(pay)}</div>
     ${S.smm ? `<div class="src">Filial: <b>${esc(S.branches.find(b => b.id === x.branchId)?.name || "tanlanmagan")}</b></div>` : ""}
     ${x.note ? (/^Hudud: /.test(x.note) ? `<div class="src" style="margin-top:8px;font-size:14px">📍 <b>${esc(x.note)}</b></div>` : `<div class="note" style="margin:8px 0 0">Izoh: ${esc(x.note)}</div>`) : ""}${S.smm ? "" : buyInfoHtml(x)}
-    ${x.contact?.byName ? `<div class="note" style="margin:8px 0 0">📞 Bog'lanildi: <b>${esc(x.contact.byName)}</b>, ${fdt(x.contact.at)}${x.contact.mediaId ? (x.contact.kind === "audio" ? " · 🎧 audio" : " · 🖼 rasm") : ""}${x.contact.priceOnly ? ' <span class="badge gold">Narx bilish uchun</span>' : ""}</div>` : ""}
+    ${x.contact?.byName ? `<div class="note" style="margin:8px 0 0">📞 Bog'lanildi: <b>${esc(x.contact.byName)}</b>, ${fdt(x.contact.at)}${x.contact.mediaId && x.contact.kind !== "none" ? (x.contact.kind === "audio" ? " · 🎧 audio" : " · 🖼 rasm") : ""}${x.contact.priceOnly ? ' <span class="badge gold">Narx bilish uchun</span>' : ""}</div>` : ""}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
       ${S.smm ? (x.status === "yangi" && !x.contact ? `<button class="btn pri sm" data-contact="${x.id}">📞 Bog'lanildi</button>` : "") : `
       ${buyButtonsHtml(x)}
@@ -1391,6 +1391,13 @@ function startFromAriza(x) {
 const MEDIA_MAX = 990000; // Firestore hujjatiga sig'adigan base64 hajmi (~720 KB fayl)
 let CT = null, rec = null;
 const fileToData = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error("Faylni o'qib bo'lmadi")); r.readAsDataURL(f); });
+function priceCard(x, name) {
+  const cv = document.createElement("canvas"); cv.width = 600; cv.height = 220; const g = cv.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, 600, 220); g.fillStyle = "#00297D"; g.font = "bold 30px Arial"; g.fillText("Narx bilish uchun", 30, 60);
+  g.fillStyle = "#333"; g.font = "22px Arial"; g.fillText(`Mijoz: ${x.client?.name || ""} · +${x.client?.phone || ""}`, 30, 110);
+  g.fillText(`Bog'landi: ${name}`, 30, 150); g.fillText(new Date().toLocaleString("uz-UZ"), 30, 190);
+  return cv.toDataURL("image/png");
+}
 function contactModal(id) {
   const x = S.arizalar.find(a => a.id === id); if (!x) return;
   CT = {id, kind: null, data: null};
@@ -1421,14 +1428,18 @@ function contactModal(id) {
       rec.start(); $("#ctRec").textContent = "⏹ To'xtatish";
     } catch (er) { rec = null; err("Mikrofonga ruxsat berilmadi"); }
   };
+  // "Narx bilish uchun" belgilansa — rasm/audio majburiy emas
+  $("#ctPrice").onchange = () => { $("#ctOk").disabled = !CT.data && !$("#ctPrice").checked; $("#ctErr").classList.add("hidden"); };
   $("#ctNo").onclick = () => { if (rec) rec.stop(); CT = null; closeModal(); };
   $("#ctOk").onclick = async () => {
-    if (!CT?.data) return err("Rasm yoki audio joylang");
+    const priceOnly = $("#ctPrice").checked;
+    if (!CT?.data && !priceOnly) return err("Rasm yoki audio joylang");
     $("#ctOk").disabled = true;
     try {
-      const mref = doc(collection(db, "media")), name = S.me.fullName || "", b = writeBatch(db);
-      b.set(mref, {kind: CT.kind, data: CT.data, arzId: id, createdBy: S.me.id, byName: name, createdAt: serverTimestamp()});
-      const contact = {by: S.me.id, byName: name, at: serverTimestamp(), mediaId: mref.id, kind: CT.kind, priceOnly: $("#ctPrice").checked};
+      const mref = doc(collection(db, "media")), name = S.me.fullName || "", b = writeBatch(db), noMedia = !CT.data;
+      // Fayl joylanmagan bo'lsa ham bazada dalil yozuvi bo'ladi: "Narx bilish uchun" kartochkasi (kim, qachon)
+      b.set(mref, {kind: noMedia ? "photo" : CT.kind, data: noMedia ? priceCard(x, name) : CT.data, arzId: id, createdBy: S.me.id, byName: name, createdAt: serverTimestamp()});
+      const contact = {by: S.me.id, byName: name, at: serverTimestamp(), mediaId: mref.id, kind: noMedia ? "none" : CT.kind, priceOnly};
       b.update(doc(db, "arizalar", id), {status: "aloqa", contact, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: name});
       await b.commit();
       Object.assign(x, {status: "aloqa", contact: {...contact, at: new Date()}, updatedAt: new Date(), updatedBy: S.me.id, updatedByName: name});
