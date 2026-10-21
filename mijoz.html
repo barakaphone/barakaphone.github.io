@@ -315,7 +315,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.21-2";
+const APP_VERSION = "2026.10.21-3";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -366,7 +366,7 @@ function modal(html) { $("#modalRoot").innerHTML = `<div class="modal"><div clas
 function closeModal() { $("#modalRoot").innerHTML = ""; }
 
 /* ================= PRICING (sotuvchi ilovasi bilan bir xil) ================= */
-function hasCycles(m) { return m && m.brand === "Apple" && /iPhone (1[5-9]|[2-9]\d|Air)/.test(m.name); }
+function hasCycles(m) { return m && m.brand === "Apple" && /iPhone (1[5-9]|[2-9]\d|Air)/i.test(m.name); }
 // Har 1% batareya kamayishi uchun battPct% (admin Sozlamalarda o'zgartiradi)
 function battAdj(m, a, s) {
   const r = Math.round, out = [], bp = s.battPct ?? 1, cp = s.cycPct ?? 1, batt = a.batt ?? 100;

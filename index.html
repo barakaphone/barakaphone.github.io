@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.21-2"></script>
+<script src="shartnoma.js?v=2026.10.21-3"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.21-2";
+const APP_VERSION = "2026.10.21-3";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -318,7 +318,7 @@ const errText = e => {
 };
 
 /* Narx hisoblash — APK ilova bilan bir xil formula */
-function hasCycles(m) { return m.brand === "Apple" && /iPhone (1[5-9]|[2-9]\d|Air)/.test(m.name); }
+function hasCycles(m) { return m.brand === "Apple" && /iPhone (1[5-9]|[2-9]\d|Air)/i.test(m.name); }
 // fv 2 (2026.10.16 dan): batareya va sikl ball emas, narxdan to'g'ridan-to'g'ri foiz ayiradi. legacy — eski shartnomalarni tekshirish uchun
 // fv 7+: narxdan faqat batareya sig'imi ayiradi, sikl ta'sir qilmaydi.
 // Eski shartnomalarni tekshirish uchun: fv 5 gacha sikl foizda, fv 6 da har 500 siklga qat'iy $ (cycUsd)
@@ -933,6 +933,8 @@ function arzAnswers(x) {
   return `<div class="tw" style="margin-top:8px"><table><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td><b>${esc(r[1])}</b></td></tr>`).join("")}</tbody></table></div>`;
 }
 // Kim bog'langan ("Ijtimoiy tarmoq" xodimi foto yoki audio dalil bilan) — faqat admin ochib ko'radi
+// Batareya sig'imi va sikli (sikl faqat ma'lumot uchun, narxga ta'sir qilmaydi)
+const battTxt = a => a?.batt != null ? `🔋 ${a.batt}%${a.cyc != null && a.cyc !== "" ? ` · ${a.cyc} sikl` : ""}` : "";
 function contactHtml(x) {
   const c = x.contact; if (!c?.byName) return "";
   return `<div class="note" style="margin:10px 0 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">📞 Bog'lanildi: <b>${esc(c.byName)}</b>, ${fdt(c.at)}
@@ -956,7 +958,7 @@ function arzCard(x) {
   <div class="card-h"><div><span class="badge ${stC}">${esc(stL)}</span>${!x.ourModel ? ' <span class="badge bad">Sotish</span>' : ""}${isBuyAriza(x) ? ' <span class="badge">Muddatli xarid</span>' : ""} <b>${esc(x.client?.name)}</b> <a class="src" href="tel:+${esc(tel)}">${esc(fmtPhone(tel))}</a></div>
     <span class="src">№${esc(x.no || x.id.slice(0, 6).toUpperCase())} · ${fdt(x.createdAt)} · ${esc(bName(x.branchId))}</span></div>
   <div class="grid4">
-    <div><div class="k">Topshiradi</div><div class="v">${isBuyAriza(x) ? "—" : esc(d.name) + " " + esc(d.mem)}</div><div class="src">${esc(d.color || "")}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""}</div></div>
+    <div><div class="k">Topshiradi</div><div class="v">${isBuyAriza(x) ? "—" : esc(d.name) + " " + esc(d.mem)}</div><div class="src">${esc(d.color || "")}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""}${battTxt(d.answers) ? " · " + battTxt(d.answers) : ""}</div></div>
     <div><div class="k">Taxminiy baho</div><div class="v">${x.manualUzs ? `<s style="opacity:.55">${uzs(x.deviceUzs)}</s> ${uzs(x.manualUzs)}` : uzs(x.deviceUzs)}</div>${x.manualUzs ? `<div class="src">✎ ${esc(x.manualReason || "")}</div>` : ""}${d.askUzs ? `<div class="src"><b>Mijoz narxi: ${uzs(d.askUzs)}</b></div>` : ""}</div>
     <div><div class="k">Olmoqchi</div><div class="v">${x.ourModel ? esc(x.ourModel) : "—"}</div>${x.ourModel ? `<div class="src">${uzs(x.ourUzs)}</div>` : ""}</div>
     <div><div class="k">To'lov</div><div class="v" style="white-space:normal">${esc(pay)}</div></div>
