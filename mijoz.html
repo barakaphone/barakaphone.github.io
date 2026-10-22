@@ -316,7 +316,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.22-3";
+const APP_VERSION = "2026.10.22-4";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -521,6 +521,7 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
+  "Eslatma: xaridni faqat Andijon, Toshkent, Qo'qon va Farg'ona hududlarida amalga oshirishingiz mumkin.": "Обратите внимание: покупку можно оформить только в регионах Андижан, Ташкент, Коканд и Фергана.",
   "Admin": "Админ",
   "Hududingiz *": "Ваш регион *", "— hududni tanlang —": "— выберите регион —", "Shahar yoki tuman": "Город или район", "masalan: Qo'qon": "например: Коканд", "Hududingizni tanlang": "Выберите ваш регион",
   "Qanday xarid qilasiz?": "Как хотите купить?", "Muddatli to'lovga olish": "Купить в рассрочку", "Oyma-oy bo'lib to'laysiz": "Оплата частями помесячно",
@@ -836,6 +837,7 @@ function formHtml() {
   <h3>${t("Bog'lanish uchun")}</h3>
   <div class="field"><label for="fName">${t("Ismingiz *")}</label><input class="inp" id="fName" autocomplete="name" maxlength="60" value="${esc(W.name)}"></div>
   <div class="field"><label for="fPhone">${t("Telefon raqamingiz *")}</label><div class="phin"><span>+998</span><input class="inp" id="fPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(90) 123-45-67" value="${esc(fmt9(W.phone))}"></div></div>
+  <div class="warn" style="margin:0 0 12px">ℹ️ ${t("Eslatma: xaridni faqat Andijon, Toshkent, Qo'qon va Farg'ona hududlarida amalga oshirishingiz mumkin.")}</div>
   <div class="field"><label for="fReg">${t("Hududingiz *")}</label><select class="inp" id="fReg"><option value="">${t("— hududni tanlang —")}</option>${REGIONS.map(r => `<option ${W.region === r ? "selected" : ""}>${esc(r)}</option>`).join("")}</select></div>
   <div id="saveErr" class="err hidden"></div>`;
 }
