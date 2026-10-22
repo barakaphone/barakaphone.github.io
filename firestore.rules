@@ -173,6 +173,13 @@ service cloud.firestore {
                         && newData().noAnswer.size() == resource.data.get('noAnswer', []).size() + 1
                         && newData().noAnswer.hasAll(resource.data.get('noAnswer', []))
                         && newData().noAnswer[newData().noAnswer.size() - 1].by == request.auth.uid)
+                    // smm: "Hudud mos emas" / "Shartnomaga mos emas" — bekor qiladi, o'z nomidan
+                    || (isSmm() && resource.data.status in ['yangi', 'javobsiz'] && newData().status == 'bekor'
+                        && changed().hasOnly(['status', 'reject', 'updatedAt', 'updatedBy', 'updatedByName'])
+                        && newData().updatedBy == request.auth.uid
+                        && newData().reject.keys().hasOnly(['reason', 'by', 'byName', 'at'])
+                        && newData().reject.reason in ['hudud', 'shartnoma'] && newData().reject.by == request.auth.uid
+                        && str(newData().reject.get('byName', ''), 80))
                     || (isSmm() && resource.data.status in ['yangi', 'javobsiz'] && newData().status == 'aloqa'
                         && changed().hasOnly(['status', 'contact', 'updatedAt', 'updatedBy', 'updatedByName'])
                         && newData().updatedBy == request.auth.uid && newData().contact.by == request.auth.uid
