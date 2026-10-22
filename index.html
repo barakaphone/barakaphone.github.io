@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.21-7"></script>
+<script src="shartnoma.js?v=2026.10.22-1"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.21-7";
+const APP_VERSION = "2026.10.22-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -921,9 +921,13 @@ function renderNasiya() {
 
 /* ================= MIJOZ ARIZALARI =================
    Mijozlar mijoz.html sahifasida (login va parolsiz) telefonini baholab ariza qoldiradi. */
-const ARZ_ST = {yangi: ["Yangi", "gold"], aloqa: ["Bog'lanildi", ""], olindi: ["Sotib olindi", "ok"], sotuvda: ["Sotuvga chiqarildi", "ok"], yakunlandi: ["Yakunlandi", "ok"], bekor: ["Bekor qilindi", "grey"]};
+const ARZ_ST = {yangi: ["Yangi", "gold"], javobsiz: ["Tel ko'tarmadi", "bad"], aloqa: ["Bog'lanildi", ""], olindi: ["Sotib olindi", "ok"], sotuvda: ["Sotuvga chiqarildi", "ok"], yakunlandi: ["Yakunlandi", "ok"], bekor: ["Bekor qilindi", "grey"]};
 const mijozUrl = () => new URL("mijoz.html", location.href.split(/[?#]/)[0]).href;
 const fmtPhone = p => { const d = digits(p); return d.length === 12 ? `+${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}` : d ? "+" + d : ""; };
+// "Tel ko'tarmadi" urinishlari (kim, qachon) — keyin qayta gaplashilganda "Bog'lanildi"ga o'tadi
+const naHtml = x => { const l = x.noAnswer || []; if (!l.length) return ""; const z = l[l.length - 1];
+  return `<div class="src" style="margin-top:6px">📵 Tel ko'tarmadi: <b>${l.length} marta</b> · oxirgi: ${esc(z.byName || "")}, ${fdt(z.at)}</div>`; };
+const naEntry = () => ({by: S.me.id, byName: S.me.fullName || "", at: new Date()});
 function updArzBadge() { const n = S.arizalar.filter(a => a.status === "yangi").length, e = $("#arzCnt"); e.textContent = n; e.classList.toggle("hidden", !n); }
 function arzAnswers(x) {
   const a = x.device?.answers || {}, pts = S.settings?.pts || {}, lab = k => (pts[k] || []).find(o => o.v === a[k])?.label || "—";
@@ -964,7 +968,7 @@ function arzCard(x) {
     <div><div class="k">To'lov</div><div class="v" style="white-space:normal">${esc(pay)}</div></div>
   </div>
   ${x.note ? (/^Hudud: /.test(x.note) ? `<div class="src" style="margin-top:8px;font-size:14px">📍 <b>${esc(x.note)}</b></div>` : `<div class="note" style="margin-bottom:0"><b>Izoh:</b> ${esc(x.note)}</div>`) : ""}
-  ${contactHtml(x)}
+  ${naHtml(x)}${contactHtml(x)}
   ${x.updatedByName ? `<div class="src" style="margin-top:8px">Oxirgi o'zgartirish: ${esc(x.updatedByName)}, ${fdt(x.updatedAt)}</div>` : ""}
   ${buyInfoHtml(x)}
   ${isBuyAriza(x) ? "" : `<details><summary>Mijoz javoblari</summary>${arzAnswers(x)}</details>`}
@@ -1401,7 +1405,7 @@ function renderArizalar() {
   ${S.arzOk ? "" : `<div class="err">Arizalarni o'qib bo'lmadi: Firebase ruxsat qoidalari hali yangilanmagan. Repozitoriydagi FIREBASE_QOIDALARI.md faylidagi ko'rsatmani bajaring.</div>`}
   ${imeiSearchHtml()}
   ${regSelHtml(inB)}
-  <div class="chips">${[["yangi", "Yangi"], ["aloqa", "Bog'lanildi"], ["olindi", "Sotib olindi"], ["sotuvda", "Sotuvga chiqarildi"], ["yakunlandi", "Yakunlandi"], ["bekor", "Bekor qilindi"], ["all", "Hammasi"]].map(([k, l]) => `<button class="chip ${S.arzFilter === k ? "on" : ""}" data-af="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
+  <div class="chips">${[["yangi", "Yangi"], ["javobsiz", "Tel ko'tarmadi"], ["aloqa", "Bog'lanildi"], ["olindi", "Sotib olindi"], ["sotuvda", "Sotuvga chiqarildi"], ["yakunlandi", "Yakunlandi"], ["bekor", "Bekor qilindi"], ["all", "Hammasi"]].map(([k, l]) => `<button class="chip ${S.arzFilter === k ? "on" : ""}" data-af="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
   ${items.length ? items.map(arzCard).join("") : `<div class="panel empty">Bu bo'limda ariza yo'q.</div>`}`;
   document.querySelectorAll("[data-af]").forEach(b => b.onclick = () => { S.arzFilter = b.dataset.af; renderArizalar(); });
   $("#arzReg").onchange = e => { S.arzReg = e.target.value; renderArizalar(); };
@@ -1417,6 +1421,7 @@ function renderArizalar() {
     try {
       const data = {status: st, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: S.me.fullName || ""};
       if (st === "aloqa" && !x.contact) data.contact = {by: S.me.id, byName: S.me.fullName || "", at: serverTimestamp()};
+      if (st === "javobsiz") data.noAnswer = [...(x.noAnswer || []), naEntry()];
       await updateDoc(doc(db, "arizalar", id), data);
       Object.assign(x, data, {updatedAt: new Date()}, data.contact ? {contact: {...data.contact, at: new Date()}} : {}); updArzBadge(); renderArizalar(); toast("Ariza holati: " + ARZ_ST[st][0]);
     } catch (e) { b.disabled = false; toast(errText(e), true); }

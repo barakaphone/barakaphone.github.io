@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.21-7"></script>
+<script src="shartnoma.js?v=2026.10.22-1"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.21-7";
+const APP_VERSION = "2026.10.22-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -935,8 +935,12 @@ function renderDeals() {
 /* ================= MIJOZ ARIZALARI =================
    Mijozlar mijoz.html sahifasida telefonini baholab ariza qoldiradi.
    Sotuvchi qo'ng'iroq qiladi va arizadagi javoblar bilan trade-in'ni boshlaydi. */
-const ARZ_ST = {yangi: ["Yangi", "gold"], aloqa: ["Bog'lanildi", ""], olindi: ["Sotib olindi", "ok"], sotuvda: ["Sotuvga chiqarildi", "ok"], yakunlandi: ["Yakunlandi", "ok"], bekor: ["Bekor qilindi", "grey"]};
+const ARZ_ST = {yangi: ["Yangi", "gold"], javobsiz: ["Tel ko'tarmadi", "bad"], aloqa: ["Bog'lanildi", ""], olindi: ["Sotib olindi", "ok"], sotuvda: ["Sotuvga chiqarildi", "ok"], yakunlandi: ["Yakunlandi", "ok"], bekor: ["Bekor qilindi", "grey"]};
 const fmtPhone = p => { const d = digits(p); return d.length === 12 ? `+${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}` : d ? "+" + d : ""; };
+// "Tel ko'tarmadi" urinishlari (kim, qachon) — keyin qayta gaplashilganda "Bog'lanildi"ga o'tadi
+const naHtml = x => { const l = x.noAnswer || []; if (!l.length) return ""; const z = l[l.length - 1];
+  return `<div class="src" style="margin-top:6px">📵 Tel ko'tarmadi: <b>${l.length} marta</b> · oxirgi: ${esc(z.byName || "")}, ${fdt(z.at)}</div>`; };
+const naEntry = () => ({by: S.me.id, byName: S.me.fullName || "", at: new Date()});
 function updArzBadge() { const n = S.arizalar.filter(a => a.status === "yangi").length, e = $("#arzCnt"); e.textContent = n; e.classList.toggle("hidden", !n); }
 // Batareya sig'imi va sikli (sikl faqat ma'lumot uchun, narxga ta'sir qilmaydi)
 const battTxt = a => a?.batt != null ? `🔋 ${a.batt}%${a.cyc != null && a.cyc !== "" ? ` · ${a.cyc} sikl` : ""}` : "";
@@ -950,12 +954,13 @@ function arzCard(x) {
     <div class="src">Olmoqchi: <b>${x.ourModel ? esc(x.ourModel) + " (" + uzs(x.ourUzs) + ")" : "tanlamagan"}</b> · ${esc(pay)}</div>
     ${S.smm ? `<div class="src">Filial: <b>${esc(S.branches.find(b => b.id === x.branchId)?.name || "tanlanmagan")}</b></div>` : ""}
     ${x.note ? (/^Hudud: /.test(x.note) ? `<div class="src" style="margin-top:8px;font-size:14px">📍 <b>${esc(x.note)}</b></div>` : `<div class="note" style="margin:8px 0 0">Izoh: ${esc(x.note)}</div>`) : ""}${S.smm ? "" : buyInfoHtml(x)}
+    ${naHtml(x)}
     ${x.contact?.byName ? `<div class="note" style="margin:8px 0 0">📞 Bog'lanildi: <b>${esc(x.contact.byName)}</b>, ${fdt(x.contact.at)}${x.contact.mediaId && x.contact.kind !== "none" ? (x.contact.kind === "audio" ? " · 🎧 audio" : " · 🖼 rasm") : ""}${x.contact.priceOnly ? ' <span class="badge gold">Narx bilish uchun</span>' : ""}</div>` : ""}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
-      ${S.smm ? (x.status === "yangi" && !x.contact ? `<button class="btn pri sm" data-contact="${x.id}">📞 Bog'lanildi</button>` : "") : `
+      ${S.smm ? (["yangi", "javobsiz"].includes(x.status) && !x.contact ? `<button class="btn pri sm" data-contact="${x.id}">📞 Bog'lanildi</button> <button class="btn sec sm" style="color:var(--bad)" data-noans="${x.id}">📵 Tel ko'tarmadi</button>` : "") : `
       ${buyButtonsHtml(x)}
       ${isBuyAriza(x) || ["yakunlandi", "bekor"].includes(x.status) || (isSellAriza(x) && ["olindi", "sotuvda"].includes(x.status)) ? "" : `<button class="btn ${isSellAriza(x) ? "sec" : "pri"} sm" data-arzgo="${x.id}">Trade-in'ni boshlash</button>`}
-      ${x.status === "yangi" ? `<button class="btn sec sm" data-arz="${x.id}|aloqa">Bog'lanildi</button>` : ""}
+      ${["yangi", "javobsiz"].includes(x.status) ? `<button class="btn sec sm" data-arz="${x.id}|aloqa">Bog'lanildi</button> <button class="btn sec sm" style="color:var(--bad)" data-noans="${x.id}">📵 Tel ko'tarmadi</button>` : ""}
       ${["olindi", "sotuvda"].includes(x.status) ? "" : x.status !== "bekor" && x.status !== "yakunlandi" ? `<button class="btn sec sm" style="color:var(--bad)" data-arz="${x.id}|bekor">Bekor qilish</button>` : `<button class="btn sec sm" data-arz="${x.id}|aloqa">Qayta ochish</button>`}`}
     </div></div>`;
 }
@@ -1358,7 +1363,7 @@ function renderArizalar() {
   (S.arzOk ? "" : `<div class="err">Arizalarni yuklab bo'lmadi. Admin Firebase ruxsat qoidalarini yangilashi kerak.</div>`) + `
   ${S.smm ? "" : imeiSearchHtml()}
   ${regSelHtml(S.arizalar)}
-  <div class="chips">${[["yangi", "Yangi"], ["aloqa", "Bog'lanildi"], ["olindi", "Sotib olindi"], ["sotuvda", "Sotuvda"], ["yakunlandi", "Yakunlandi"], ["bekor", "Bekor"], ["all", "Hammasi"]].map(([k, l]) => `<button class="chip ${S.arzFilter === k ? "on" : ""}" data-af="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
+  <div class="chips">${[["yangi", "Yangi"], ["javobsiz", "Tel ko'tarmadi"], ["aloqa", "Bog'lanildi"], ["olindi", "Sotib olindi"], ["sotuvda", "Sotuvda"], ["yakunlandi", "Yakunlandi"], ["bekor", "Bekor"], ["all", "Hammasi"]].map(([k, l]) => `<button class="chip ${S.arzFilter === k ? "on" : ""}" data-af="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
   ${items.length ? items.map(arzCard).join("") : `<div class="empty">Bu bo'limda ariza yo'q.</div>`}
   <button class="btn sec block" style="margin-top:14px" data-act="arzReload">↻ Arizalarni yangilash</button>`;
   $("#arzReg").onchange = e => { S.arzReg = e.target.value; renderArizalar(); };
@@ -1505,6 +1510,11 @@ document.addEventListener("click", async e => {
   if (a === "slSave") return saveSale(t);
   if (t.dataset.af) { S.arzFilter = t.dataset.af; return renderArizalar(); }
   if (t.dataset.contact) return contactModal(t.dataset.contact);
+  if (t.dataset.noans) {
+    const x = S.arizalar.find(z => z.id === t.dataset.noans); if (!x) return; t.disabled = true;
+    try { await setArzStatus(x.id, "javobsiz", {noAnswer: [...(x.noAnswer || []), naEntry()]}); renderArizalar(); toast("Belgilandi: Tel ko'tarmadi"); } catch (er) { t.disabled = false; toast(errText(er), true); }
+    return;
+  }
   if (t.dataset.arzgo) { const x = S.arizalar.find(z => z.id === t.dataset.arzgo); if (x) startFromAriza(x); return; }
   if (t.dataset.arz) {
     const [id, st] = t.dataset.arz.split("|"); t.disabled = true;

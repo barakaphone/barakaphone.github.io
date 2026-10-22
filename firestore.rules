@@ -163,9 +163,17 @@ service cloud.firestore {
                     && num(newData().get('kurs', 0));
       // Xodimlar: admin hammasini, sotuvchi o'z filiali va filiali tanlanmagan ("") arizalarni ko'radi
       allow read: if isAdmin() || isSmm() || (isStaff() && resource.data.branchId in [myBranch(), '']) || isOffice();
-      // smm: faqat "Yangi" → "Bog'lanildi", o'z nomi bilan va shu paketda joylangan foto/audio dalil bilan
+      // smm: "Yangi" yoki "Tel ko'tarmadi" → "Bog'lanildi", o'z nomi bilan va shu paketda joylangan foto/audio dalil bilan
       allow update: if contactKept() && (isAdmin()
-                    || (isSmm() && resource.data.status == 'yangi' && newData().status == 'aloqa'
+                    // smm: "Tel ko'tarmadi" — faqat yangi urinish qo'shiladi (eskilari o'zgarmaydi), o'z nomidan
+                    || (isSmm() && resource.data.status in ['yangi', 'javobsiz'] && newData().status == 'javobsiz'
+                        && changed().hasOnly(['status', 'noAnswer', 'updatedAt', 'updatedBy', 'updatedByName'])
+                        && newData().updatedBy == request.auth.uid
+                        && newData().noAnswer is list && newData().noAnswer.size() <= 30
+                        && newData().noAnswer.size() == resource.data.get('noAnswer', []).size() + 1
+                        && newData().noAnswer.hasAll(resource.data.get('noAnswer', []))
+                        && newData().noAnswer[newData().noAnswer.size() - 1].by == request.auth.uid)
+                    || (isSmm() && resource.data.status in ['yangi', 'javobsiz'] && newData().status == 'aloqa'
                         && changed().hasOnly(['status', 'contact', 'updatedAt', 'updatedBy', 'updatedByName'])
                         && newData().updatedBy == request.auth.uid && newData().contact.by == request.auth.uid
                         && newData().contact.mediaId is string
