@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.23-1"></script>
+<script src="shartnoma.js?v=2026.10.23-2"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.23-1";
+const APP_VERSION = "2026.10.23-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -1399,14 +1399,16 @@ function startArzLive() {
 const regOf = x => (/^Hudud: ([^,]+)/.exec(x.note || "") || [])[1] || "";
 const regSelHtml = list => { const m = {}; list.forEach(a => { const r = regOf(a) || "-"; m[r] = (m[r] || 0) + 1; });
   return `<select class="inp" id="arzReg" style="max-width:280px;margin-bottom:10px"><option value="">📍 Barcha hududlar · ${list.length}</option>${Object.keys(m).filter(r => r !== "-").sort((a, b) => m[b] - m[a]).map(r => `<option value="${esc(r)}" ${S.arzReg === r ? "selected" : ""}>${esc(r)} · ${m[r]}</option>`).join("")}${m["-"] ? `<option value="-" ${S.arzReg === "-" ? "selected" : ""}>Hudud ko'rsatilmagan · ${m["-"]}</option>` : ""}</select>`; };
+// "Sotildi" — bizning telefon shu ariza bo'yicha sotilgan (shartnoma tuzilgan)
+const stMatch = (a, k) => k === "sotildi" ? !!a.dealId : a.status === k;
 const regMatch = a => (!S.arzReg || (S.arzReg === "-" ? !regOf(a) : regOf(a) === S.arzReg)) && phoneMatch(a);
 // Telefon raqami bo'yicha qidiruv (istalgan qismi: 901234567, 4567, 998...)
 const phoneMatch = a => { const q = digits(S.arzPhone || ""); return !q || digits(a.client?.phone).includes(q); };
 const phoneSearchHtml = () => `<input class="inp" id="arzPhone" type="search" inputmode="tel" autocomplete="off" placeholder="📞 Telefon raqami bo'yicha qidirish" value="${esc(S.arzPhone || "")}" style="margin-bottom:10px">`;
 const bindPhoneSearch = () => { const el = $("#arzPhone"); if (!el) return; el.oninput = () => { S.arzPhone = el.value; const pos = el.selectionStart; renderArizalar(); const n = $("#arzPhone"); n.focus(); try { n.setSelectionRange(pos, pos); } catch {} }; };
 function renderArizalar() {
-  const url = mijozUrl(), inB = S.arizalar.filter(inBranch), all = inB.filter(regMatch), cnt = k => k === "all" ? all.length : all.filter(a => a.status === k).length;
-  const items = S.arzFilter === "all" ? all : all.filter(a => a.status === S.arzFilter);
+  const url = mijozUrl(), inB = S.arizalar.filter(inBranch), all = inB.filter(regMatch), cnt = k => k === "all" ? all.length : all.filter(a => stMatch(a, k)).length;
+  const items = S.arzFilter === "all" ? all : all.filter(a => stMatch(a, S.arzFilter));
   $("#page").innerHTML = `
   <div class="panel"><h3 style="margin-top:0">Mijozlar uchun sahifa</h3><div class="qrwrap"><div class="qr">${qrSvg(url)}</div>
     <div class="lnk"><div class="src">Mijoz shu havola yoki QR-kod orqali login va parolsiz kiradi: telefonini baholaydi, yangi telefon tanlaydi va ariza qoldiradi. Arizalar shu yerda va sotuvchi ilovasida ko'rinadi.</div>
@@ -1415,7 +1417,7 @@ function renderArizalar() {
   ${imeiSearchHtml()}
   ${phoneSearchHtml()}
   ${regSelHtml(inB.filter(phoneMatch))}
-  <div class="chips">${[["yangi", "Yangi"], ["javobsiz", "Tel ko'tarmadi"], ["aloqa", "Bog'lanildi"], ["olindi", "Sotib olindi"], ["sotuvda", "Sotuvga chiqarildi"], ["yakunlandi", "Yakunlandi"], ["bekor", "Bekor qilindi"], ["all", "Hammasi"]].map(([k, l]) => `<button class="chip ${S.arzFilter === k ? "on" : ""}" data-af="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
+  <div class="chips">${[["yangi", "Yangi"], ["javobsiz", "Tel ko'tarmadi"], ["aloqa", "Bog'lanildi"], ["olindi", "Sotib olindi"], ["sotildi", "Sotildi"], ["sotuvda", "Sotuvga chiqarildi"], ["yakunlandi", "Yakunlandi"], ["bekor", "Bekor qilindi"], ["all", "Hammasi"]].map(([k, l]) => `<button class="chip ${S.arzFilter === k ? "on" : ""}" data-af="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
   ${items.length ? items.map(arzCard).join("") : `<div class="panel empty">Bu bo'limda ariza yo'q.</div>`}`;
   document.querySelectorAll("[data-af]").forEach(b => b.onclick = () => { S.arzFilter = b.dataset.af; renderArizalar(); });
   $("#arzReg").onchange = e => { S.arzReg = e.target.value; renderArizalar(); };
