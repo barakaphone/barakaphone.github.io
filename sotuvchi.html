@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.22-4"></script>
+<script src="shartnoma.js?v=2026.10.23-1"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.22-4";
+const APP_VERSION = "2026.10.23-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -1238,6 +1238,8 @@ document.addEventListener("click", e => {
    "Sotilgan"ga o'tadi, mijoz telefoni omborga "Tayyorlanmoqda" tushadi, shartnoma (nasiya jadvali bilan) tuziladi. */
 let SOLD = null;
 const bfUzs = u => Math.round((u || 0) * S.settings.kurs / 1000) * 1000;
+// Admin arizada bizning telefon narxini o'zgartirgan bo'lsa (ourOrigUzs) — shartnoma shu narx bilan tuziladi
+const ourPriceOf = (x, st) => x.ourOrigUzs && x.stockId === st.id ? x.ourUzs : bfUzs(st.sellUsd);
 const bfMaxM = () => S.settings.tiers[S.settings.tiers.length - 1].to;
 const bfRate = m => (S.settings.tiers.find(t => m <= t.to) || S.settings.tiers[S.settings.tiers.length - 1]).rate;
 const bfPlan = (diff, m) => { const monthly = Math.ceil((diff + diff * bfRate(m) * m / 100) / m / 1000) * 1000; return {monthly, total: monthly * m}; };
@@ -1245,7 +1247,7 @@ const bfIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 const bfAddM = (d, n) => { const x = new Date(d), day = x.getDate(); x.setDate(1); x.setMonth(x.getMonth() + n); x.setDate(Math.min(day, new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); return x; };
 const bfSchedule = (p, m) => Array.from({length: m}, (_, i) => ({n: i + 1, due: bfIso(bfAddM(new Date(), i + 1)), amount: p.monthly, paid: false}));
 function renderSoldModal() {
-  const x = S.arizalar.find(a => a.id === SOLD.id), st = SOLD.stock, our = bfUzs(st.sellUsd), dev = x.bought.priceUzs, diff = our - dev;
+  const x = S.arizalar.find(a => a.id === SOLD.id), st = SOLD.stock, our = ourPriceOf(x, st), dev = x.bought.priceUzs, diff = our - dev;
   const m = Math.min(SOLD.months, bfMaxM()), p = diff > 0 ? bfPlan(diff, m) : null;
   modal(`<h2>Bizning telefon sotildi</h2><p class="src" style="margin:0 0 10px">${esc(x.client?.name || "")} · ${esc(fmtPhone(x.client?.phone))} · pasport ${esc(x.bought.passport || "—")}</p>
   <div class="sgrid"><div><div class="k">Mijoz topshirdi</div><b>${esc(x.device?.name || "")} ${esc(x.device?.mem || "")}</b><div>${uzs(dev)}</div></div>
@@ -1267,7 +1269,7 @@ async function openSold(id) {
 }
 async function saveSold() {
   const x = S.arizalar.find(a => a.id === SOLD.id), st = SOLD.stock, er = $("#sErr");
-  const kurs = S.settings.kurs, our = bfUzs(st.sellUsd), devUzs = x.bought.priceUzs, devUsd = Math.round(devUzs / kurs * 100) / 100, diff = our - devUzs;
+  const kurs = S.settings.kurs, our = ourPriceOf(x, st), devUzs = x.bought.priceUzs, devUsd = Math.round(devUzs / kurs * 100) / 100, diff = our - devUzs;
   const months = diff > 0 ? Math.min(SOLD.months, bfMaxM()) : 0, p = months ? bfPlan(diff, months) : null;
   SOLD.saving = true; renderSoldModal();
   try {

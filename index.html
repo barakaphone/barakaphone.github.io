@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.22-4"></script>
+<script src="shartnoma.js?v=2026.10.23-1"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.22-4";
+const APP_VERSION = "2026.10.23-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -967,7 +967,7 @@ function arzCard(x) {
   <div class="grid4">
     <div><div class="k">Topshiradi</div><div class="v">${isBuyAriza(x) ? "—" : esc(d.name) + " " + esc(d.mem)}</div><div class="src">${esc(d.color || "")}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""}${battTxt(d.answers) ? " · " + battTxt(d.answers) : ""}</div></div>
     <div><div class="k">Taxminiy baho</div><div class="v">${x.manualUzs ? `<s style="opacity:.55">${uzs(x.deviceUzs)}</s> ${uzs(x.manualUzs)}` : uzs(x.deviceUzs)}</div>${x.manualUzs ? `<div class="src">✎ ${esc(x.manualReason || "")}</div>` : ""}${d.askUzs ? `<div class="src"><b>Mijoz narxi: ${uzs(d.askUzs)}</b></div>` : ""}</div>
-    <div><div class="k">Olmoqchi</div><div class="v">${x.ourModel ? esc(x.ourModel) : "—"}</div>${x.ourModel ? `<div class="src">${uzs(x.ourUzs)}</div>` : ""}</div>
+    <div><div class="k">Olmoqchi</div><div class="v">${x.ourModel ? esc(x.ourModel) : "—"}</div>${x.ourModel ? `<div class="src">${x.ourOrigUzs && x.ourOrigUzs !== x.ourUzs ? `<s style="opacity:.55">${uzs(x.ourOrigUzs)}</s> <b>${uzs(x.ourUzs)}</b>` : uzs(x.ourUzs)}</div>${x.ourReason ? `<div class="src">✎ ${esc(x.ourReason)}${x.ourByName ? " (" + esc(x.ourByName) + ")" : ""}</div>` : ""}<button class="btn sec sm" style="margin-top:6px" data-ourprice="${x.id}">✎ Narxni o'zgartirish</button>` : ""}</div>
     <div><div class="k">To'lov</div><div class="v" style="white-space:normal">${esc(pay)}</div></div>
   </div>
   ${x.note ? (/^Hudud: /.test(x.note) ? `<div class="src" style="margin-top:8px;font-size:14px">📍 <b>${esc(x.note)}</b></div>` : `<div class="note" style="margin-bottom:0"><b>Izoh:</b> ${esc(x.note)}</div>`) : ""}
@@ -1277,6 +1277,8 @@ document.addEventListener("click", e => {
    "Sotilgan"ga o'tadi, mijoz telefoni omborga "Tayyorlanmoqda" tushadi, shartnoma (nasiya jadvali bilan) tuziladi. */
 let SOLD = null;
 const bfUzs = u => Math.round((u || 0) * S.settings.kurs / 1000) * 1000;
+// Admin arizada bizning telefon narxini o'zgartirgan bo'lsa (ourOrigUzs) — shartnoma shu narx bilan tuziladi
+const ourPriceOf = (x, st) => x.ourOrigUzs && x.stockId === st.id ? x.ourUzs : bfUzs(st.sellUsd);
 const bfMaxM = () => S.settings.tiers[S.settings.tiers.length - 1].to;
 const bfRate = m => (S.settings.tiers.find(t => m <= t.to) || S.settings.tiers[S.settings.tiers.length - 1]).rate;
 const bfPlan = (diff, m) => { const monthly = Math.ceil((diff + diff * bfRate(m) * m / 100) / m / 1000) * 1000; return {monthly, total: monthly * m}; };
@@ -1284,7 +1286,7 @@ const bfIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 const bfAddM = (d, n) => { const x = new Date(d), day = x.getDate(); x.setDate(1); x.setMonth(x.getMonth() + n); x.setDate(Math.min(day, new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); return x; };
 const bfSchedule = (p, m) => Array.from({length: m}, (_, i) => ({n: i + 1, due: bfIso(bfAddM(new Date(), i + 1)), amount: p.monthly, paid: false}));
 function renderSoldModal() {
-  const x = S.arizalar.find(a => a.id === SOLD.id), st = SOLD.stock, our = bfUzs(st.sellUsd), dev = x.bought.priceUzs, diff = our - dev;
+  const x = S.arizalar.find(a => a.id === SOLD.id), st = SOLD.stock, our = ourPriceOf(x, st), dev = x.bought.priceUzs, diff = our - dev;
   const m = Math.min(SOLD.months, bfMaxM()), p = diff > 0 ? bfPlan(diff, m) : null;
   modal(`<h2>Bizning telefon sotildi</h2><p class="src" style="margin:0 0 10px">${esc(x.client?.name || "")} · ${esc(fmtPhone(x.client?.phone))} · pasport ${esc(x.bought.passport || "—")}</p>
   <div class="sgrid"><div><div class="k">Mijoz topshirdi</div><b>${esc(x.device?.name || "")} ${esc(x.device?.mem || "")}</b><div>${uzs(dev)}</div></div>
@@ -1306,7 +1308,7 @@ async function openSold(id) {
 }
 async function saveSold() {
   const x = S.arizalar.find(a => a.id === SOLD.id), st = SOLD.stock, er = $("#sErr");
-  const kurs = S.settings.kurs, our = bfUzs(st.sellUsd), devUzs = x.bought.priceUzs, devUsd = Math.round(devUzs / kurs * 100) / 100, diff = our - devUzs;
+  const kurs = S.settings.kurs, our = ourPriceOf(x, st), devUzs = x.bought.priceUzs, devUsd = Math.round(devUzs / kurs * 100) / 100, diff = our - devUzs;
   const months = diff > 0 ? Math.min(SOLD.months, bfMaxM()) : 0, p = months ? bfPlan(diff, months) : null;
   SOLD.saving = true; renderSoldModal();
   try {
@@ -1444,6 +1446,29 @@ function renderArizalar() {
     const diff = x.ourUzs - devUzs, months = diff > 0 ? (x.months || 6) : 0, p = months ? plan(diff, months) : null;
     return {diffUzs: diff, payType: p ? "nasiya" : "", months, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0};
   };
+  // Bizning (sotiladigan) telefon narxini arizada o'zgartirish — farq va oylik to'lov qayta hisoblanadi
+  document.querySelectorAll("[data-ourprice]").forEach(b => b.onclick = () => {
+    const x = S.arizalar.find(a => a.id === b.dataset.ourprice), orig = x.ourOrigUzs || x.ourUzs;
+    modal(`<h2>Telefon narxini o'zgartirish</h2><p class="sub">${esc(x.ourModel)}. Boshlang'ich narx: <b>${uzs(orig)}</b></p>
+      <div class="field"><label>Yangi narx, so'm</label><input class="inp" id="opVal" inputmode="numeric" value="${sum(x.ourUzs)}"></div>
+      <div class="field"><label>Sababi *</label><textarea class="inp" id="opWhy" rows="3" placeholder="Masalan: chegirma qilindi">${esc(x.ourReason || "")}</textarea></div>
+      <div id="opErr" class="err hidden"></div>
+      <div class="acts">${x.ourOrigUzs ? `<button class="btn bad" id="opDel" style="margin-right:auto">Boshlang'ich narxga qaytarish</button>` : ""}<button class="btn sec" id="opNo">Bekor qilish</button><button class="btn pri" id="opOk">Saqlash</button></div>`);
+    $("#opVal").oninput = e => { const v = +digits(e.target.value); e.target.value = v ? sum(v) : ""; };
+    $("#opNo").onclick = closeModal;
+    const save = async data => {
+      const pay = repay({...x, ourUzs: data.ourUzs}, x.manualUzs || x.deviceUzs || 0), all = {...data, ...pay};
+      try { await updateDoc(doc(db, "arizalar", x.id), {...all, updatedAt: serverTimestamp(), updatedBy: S.me.id, updatedByName: S.me.fullName || ""});
+            Object.assign(x, all); for (const k in all) if (all[k]?._methodName === "deleteField") delete x[k]; closeModal(); renderArizalar(); toast("Narx saqlandi"); } catch (e) { toast(errText(e), true); }
+    };
+    $("#opOk").onclick = () => {
+      const v = Math.round(+digits($("#opVal").value) / 1000) * 1000, why = $("#opWhy").value.trim(), er = $("#opErr");
+      if (!(v > 0)) { er.textContent = "Narxni kiriting"; return er.classList.remove("hidden"); }
+      if (why.length < 3) { er.textContent = "Sababini yozing"; return er.classList.remove("hidden"); }
+      save({ourUzs: v, ourOrigUzs: orig, ourReason: why, ourByName: S.me.fullName || ""});
+    };
+    if ($("#opDel")) $("#opDel").onclick = () => save({ourUzs: orig, ourOrigUzs: deleteField(), ourReason: deleteField(), ourByName: deleteField()});
+  });
   document.querySelectorAll("[data-arzprice]").forEach(b => b.onclick = () => {
     const x = S.arizalar.find(a => a.id === b.dataset.arzprice);
     modal(`<h2>Bahoni o'zgartirish</h2><p class="sub">${esc(x.device?.name || "")} ${esc(x.device?.mem || "")}. Hisoblangan baho: <b>${uzs(x.deviceUzs)}</b></p>
