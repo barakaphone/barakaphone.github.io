@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.23-2"></script>
+<script src="shartnoma.js?v=2026.10.24-1"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.23-2";
+const APP_VERSION = "2026.10.24-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -295,6 +295,9 @@ const sum = n => Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, 
 const uzs = n => sum(n) + "\u00A0so'm";
 const usd = n => "$" + (Math.round((n || 0) * 100) / 100).toLocaleString("en-US", {minimumFractionDigits: 0, maximumFractionDigits: 2});
 const toUzs = (u, k) => Math.round((u || 0) * (k || S.settings?.kurs || 0) / 1000) * 1000;
+// Sotuv kursi: ombordagi (sotuvdagi) telefonlarimiz narxi shu kurs bilan so'mga o'giriladi; kiritilmagan bo'lsa — asosiy kurs
+const sellKurs = () => S.settings?.sellKurs || S.settings?.kurs || 0;
+const sellUzs = u => Math.round((u || 0) * sellKurs() / 1000) * 1000;
 const showPhone = p => (!p || /^0+$/.test(String(p).replace(/\D/g, ""))) ? "" : p;
 const digits = v => String(v ?? "").replace(/\D/g, "");
 const normPhone = v => { const d = digits(v); return d.length === 9 ? "998" + d : d; };   // 90 123 45 67 → 998901234567
@@ -614,7 +617,7 @@ function renderStock() {
   const items = all.filter(s => S.stockFilter === "all" || s.status === S.stockFilter);
   const cnt = k => k === "all" ? all.length : all.filter(s => s.status === k).length;
   const live = all.filter(s => s.status !== "sotilgan");
-  const tb = live.reduce((a, s) => a + toUzs(s.buyUsd), 0), ts = live.reduce((a, s) => a + toUzs(s.sellUsd), 0);
+  const tb = live.reduce((a, s) => a + toUzs(s.buyUsd), 0), ts = live.reduce((a, s) => a + sellUzs(s.sellUsd), 0);
   $("#page").innerHTML = `
   <div class="kpis">
     <div class="kpi"><div class="k">Omborda</div><div class="v">${live.length} ta</div></div>
@@ -629,7 +632,7 @@ function renderStock() {
   ${items.length ? `<div class="tw"><table><thead><tr><th>Telefon</th><th>Filial</th><th class="n">Tannarx, $</th><th class="n">Sotish narxi, $</th><th class="n">Foyda</th><th>Holat</th><th></th></tr></thead><tbody>
   ${items.map(s => {
     const sold = s.status === "sotilgan";
-    const pr = sold && s.sold?.priceUzs ? s.sold.priceUzs - toUzs(s.buyUsd) : toUzs(s.sellUsd) - toUzs(s.buyUsd);
+    const pr = sold && s.sold?.priceUzs ? s.sold.priceUzs - toUzs(s.buyUsd) : sellUzs(s.sellUsd) - toUzs(s.buyUsd);
     return `<tr>
     <td><b>${esc(s.modelName)}</b> <span class="badge ${s.cond === "yangi" ? "ok" : "grey"}">${s.cond === "yangi" ? "Yangi" : "B/U"}</span> <span class="badge ${esc(s.grade)}">${esc(s.grade)}</span><div class="src">${esc(s.mem || "")}${s.color ? ", " + esc(colorUz(s.color)) : ""}${s.battery ? ", " + s.battery + "%" : ""}${s.cyc != null ? ", " + s.cyc + " sikl" : ""}${s.box ? (s.box === "yes" ? ", qutisi bor" : ", qutisiz") : ""}${s.imei && s.cond === "yangi" ? "<br>IMEI " + esc(s.imei) : ""}</div>
       <div class="src">${s.source === "trade-in" ? "Trade-in orqali" : "Xarid"} · ${fdate(s.createdAt)}</div>
@@ -637,7 +640,7 @@ function renderStock() {
       ${sold && s.sold ? `<div class="src"><b>Sotildi:</b> ${fdate(s.sold.at)}, ${esc(s.sold.clientName || "")} (${s.sold.kind === "deal" ? "trade-in" : "sotuv"})</div>` : ""}</td>
     <td>${bCell(s.branchId)}</td>
     <td class="n">${sold ? usd(s.buyUsd) : `<input class="inp sm" type="number" step="1" data-buy="${s.id}" value="${s.buyUsd}">`}<div class="src">${uzs(toUzs(s.buyUsd))}</div></td>
-    <td class="n">${sold ? usd(s.sellUsd) : `<input class="inp sm" type="number" step="1" data-sell="${s.id}" value="${s.sellUsd}">`}<div class="src">${uzs(toUzs(s.sellUsd))}</div></td>
+    <td class="n">${sold ? usd(s.sellUsd) : `<input class="inp sm" type="number" step="1" data-sell="${s.id}" value="${s.sellUsd}">`}<div class="src">${uzs(sellUzs(s.sellUsd))}</div></td>
     <td class="n"><b style="color:${pr >= 0 ? "var(--ok)" : "var(--bad)"}">${uzs(pr)}</b></td>
     <td>${sold ? `<span class="badge grey">Sotilgan</span>` : `<select class="inp" style="min-height:36px;padding:6px 8px;min-width:140px" data-status="${s.id}">${["sotuvda", "tayyorlanmoqda"].map(k => `<option value="${k}" ${s.status === k ? "selected" : ""}>${ST_LABEL[k]}</option>`).join("")}</select>`}</td>
     <td style="white-space:nowrap">${sold ? (isOwner() ? `<button class="btn bad sm" data-delsold="${s.id}">O'chirish</button>` : "") : `<button class="btn gold sm" data-tag="${s.id}">🏷 Sennik</button> <button class="btn sec sm" data-sedit="${s.id}">Tahrirlash</button> <button class="btn sec sm" data-move="${s.id}">Ko'chirish</button> <button class="btn bad sm" data-delstock="${s.id}">O'chirish</button>`}</td></tr>`}).join("")}
@@ -704,7 +707,7 @@ const COND = {yangi: "Yangi", bu: "B/U"};
 const condSel = (id, cur = "bu") => `<select class="inp" id="${id}">${Object.entries(COND).map(([k, l]) => `<option value="${k}" ${k === cur ? "selected" : ""}>${l}</option>`).join("")}</select>`;
 /* Sennik: ombordagi telefon ma'lumotlari bilan Xprinter'ga chop etish (o'lcham — Sozlamalarda) */
 function printTags(list) {
-  const items = list.filter(Boolean).map(s => ({model: s.modelName, mem: s.mem, batt: s.battery ? s.battery + "%" : "", region: s.region || "", price: s.sellUsd ? sum(toUzs(s.sellUsd)) + " so'm" : ""}));
+  const items = list.filter(Boolean).map(s => ({model: s.modelName, mem: s.mem, batt: s.battery ? s.battery + "%" : "", region: s.region || "", price: s.sellUsd ? sum(sellUzs(s.sellUsd)) + " so'm" : ""}));
   const w = window.open("", "_blank"); if (!w) return toast("Brauzer yangi oyna ochishga ruxsat bermadi", true);
   w.document.open(); w.document.write(Shartnoma.tagHtml(items, S.settings.tag, null, 1)); w.document.close();
 }
@@ -1243,7 +1246,7 @@ async function saveList(id, btn) {
   const d = x.device || {}, a = d.answers || {}, branchId = $("#lBranch")?.value || (IS_ADMIN ? (x.branchId || S.me.branchId) : S.me.branchId);
   const data = {branchId, modelName: d.name || "", brand: d.brand || "Apple", mem: d.mem || "", color: d.color || "", imei: x.bought.imei || "", cond: "bu",
     grade: d.calc?.gradeLetter || "B", battery: a.batt ?? null, cyc: a.cyc ?? null, box: a.box || "",
-    buyUsd: Math.round(x.bought.priceUzs / kurs * 100) / 100, sellUsd: Math.round(sell / kurs * 100) / 100,
+    buyUsd: Math.round(x.bought.priceUzs / kurs * 100) / 100, sellUsd: Math.round(sell / sellKurs() * 100) / 100,
     status: "sotuvda", source: "xarid", sourceArizaId: x.id, createdBy: S.me.id, createdAt: serverTimestamp(), updatedAt: serverTimestamp()};
   try {
     const ref = doc(collection(db, "stock"));
@@ -1278,7 +1281,7 @@ document.addEventListener("click", e => {
 let SOLD = null;
 const bfUzs = u => Math.round((u || 0) * S.settings.kurs / 1000) * 1000;
 // Admin arizada bizning telefon narxini o'zgartirgan bo'lsa (ourOrigUzs) — shartnoma shu narx bilan tuziladi
-const ourPriceOf = (x, st) => x.ourOrigUzs && x.stockId === st.id ? x.ourUzs : bfUzs(st.sellUsd);
+const ourPriceOf = (x, st) => x.ourOrigUzs && x.stockId === st.id ? x.ourUzs : sellUzs(st.sellUsd);
 const bfMaxM = () => S.settings.tiers[S.settings.tiers.length - 1].to;
 const bfRate = m => (S.settings.tiers.find(t => m <= t.to) || S.settings.tiers[S.settings.tiers.length - 1]).rate;
 const bfPlan = (diff, m) => { const monthly = Math.ceil((diff + diff * bfRate(m) * m / 100) / m / 1000) * 1000; return {monthly, total: monthly * m}; };
@@ -1734,13 +1737,14 @@ function modelImgModal(m, done) {
   if ($("#miDel")) $("#miDel").onclick = () => save("");
 }
 function renderSettings() {
-  const s = structuredClone(S.settings); s.battPct ??= 1; s.cycPct ??= 1; s.cycUsd ??= 20;
+  const s = structuredClone(S.settings); s.sellKurs ||= s.kurs; s.battPct ??= 1; s.cycPct ??= 1; s.cycUsd ??= 20;
   const num = (path, v, step = 1, w = 90) => `<input class="inp sm" style="width:${w}px" type="number" step="${step}" data-set="${path}" value="${v}">`;
   const gFrom = i => i === 0 ? 0 : s.grades[i - 1].max + 1, tFrom = i => i === 0 ? 1 : s.tiers[i - 1].to + 1;
   $("#page").innerHTML = `
   <div class="panel"><h3 style="margin-top:0">Narx siyosati</h3>
     <div class="row">
-      <div class="field"><label>Dollar kursi (1$ = so'm)</label>${num("kurs", s.kurs, 1, 140)}</div>
+      <div class="field"><label>Dollar kursi (1$ = so'm) — mijoz telefonini baholash</label>${num("kurs", s.kurs, 1, 140)}</div>
+      <div class="field"><label>Sotuv kursi (1$ = so'm) — ombordagi telefonlarimiz</label>${num("sellKurs", s.sellKurs || s.kurs, 1, 140)}</div>
       <div class="field"><label>Bozor narxidan chegirma, %</label>${num("discPct", s.discPct)}</div>
       <div class="field"><label>Qutisi yo'q, %</label>${num("noBoxPct", s.noBoxPct)}</div>
       <div class="field"><label>Yoqilmaydi: bozor narxining %</label>${num("partsPct", s.partsPct)}</div>
@@ -1777,6 +1781,7 @@ function renderSettings() {
     for (let i = 1; i < s.grades.length - 1; i++) if (s.grades[i].max <= s.grades[i - 1].max) return toast("Daraja chegaralari o'sib borishi kerak", true);
     for (let i = 1; i < s.tiers.length; i++) if (s.tiers[i].to <= s.tiers[i - 1].to) return toast("Nasiya oraliqlari o'sib borishi kerak", true);
     if (!(s.kurs > 0)) return toast("Kursni kiriting", true);
+    if (!(s.sellKurs > 0)) return toast("Sotuv kursini kiriting", true);
     s.contract = {months: $("#ctMonths").value.trim(), extra: $("#ctExtra").value.trim()};
     s.tag = {w: +$("#tgW").value || 58, h: +$("#tgH").value || 40, design: 1};
     try { await setDoc(doc(db, "settings", "main"), s); S.settings = s; toast("Sozlamalar saqlandi"); renderSettings(); } catch (e) { toast(errText(e), true); }

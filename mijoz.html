@@ -316,7 +316,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.23-2";
+const APP_VERSION = "2026.10.24-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -353,6 +353,9 @@ const digits = v => String(v ?? "").replace(/\D/g, "");
 const normPhone = v => { const d = digits(v); return d.length === 9 ? "998" + d : d; };
 const fmtPhone = p => { const d = digits(p); return d.length === 12 ? `+${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}` : "+" + d; };
 const toUzs = u => Math.round((u || 0) * S.settings.kurs / 1000) * 1000;
+// Sotuv kursi: ombordagi (sotuvdagi) telefonlarimiz narxi shu kurs bilan so'mga o'giriladi; kiritilmagan bo'lsa — asosiy kurs
+const sellKurs = () => S.settings?.sellKurs || S.settings?.kurs || 0;
+const sellUzs = u => Math.round((u || 0) * sellKurs() / 1000) * 1000;
 const isoDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 function addMonths(d, n) { const x = new Date(d), day = x.getDate(); x.setDate(1); x.setMonth(x.getMonth() + n); x.setDate(Math.min(day, new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); return x; }
 const show = id => ["boot", "app"].forEach(x => $("#" + x).classList.toggle("hidden", x !== id));
@@ -659,7 +662,7 @@ const colorsOf = m => (m?.colors || []).length ? m.colors : appleColorsOf(m).len
 const answers = () => ({power: "yes", lock: "off", screen: W.screen, body: W.body, batt: W.batt, cyc: hasCycles(curModel()) ? W.cyc : null, bio: W.bio, cam: "ok", repair: W.repair, box: W.box});
 const clientCalc = () => { const m = curModel(); return m && W.mem ? calcTradein(m, W.mem, answers(), S.settings) : null; };
 const ourStock = () => W.sell ? null : S.stock.find(s => s.id === W.stockId);
-const diffUzs = () => { const s = ourStock(), c = clientCalc(); if (W.buy) return s ? toUzs(s.sellUsd) : 0; return s && c ? toUzs(s.sellUsd) - c.uzs : 0; };
+const diffUzs = () => { const s = ourStock(), c = clientCalc(); if (W.buy) return s ? sellUzs(s.sellUsd) : 0; return s && c ? sellUzs(s.sellUsd) - c.uzs : 0; };
 const needPlan = () => !!ourStock() && diffUzs() > 0;
 const fmt9 = v => { const d = digits(v).slice(0, 9); if (d.length <= 2) return d ? "(" + d : ""; let o = `(${d.slice(0, 2)}) ${d.slice(2, 5)}`; if (d.length > 5) o += "-" + d.slice(5, 7); if (d.length > 7) o += "-" + d.slice(7, 9); return o; };
 const phoneOk = () => W.phone.length === 9;
@@ -705,7 +708,7 @@ function pcard(s, on) {
     <span class="pimg"><span class="pcond ${isNew ? "new" : ""}">${esc(t(isNew ? "Yangi" : "B/U"))}</span>${imgOf(s)}</span>
     <span class="pbody"><b class="pname">${esc(s.modelName)}</b><span class="pmeta">${esc(s.mem || "")}${s.color ? " · " + esc(colorUz(s.color)) : ""}</span>
       ${specs.length ? `<span class="pspecs">${specs.map(x => `<span>${esc(x)}</span>`).join("")}</span>` : ""}
-      <span class="pprice">${uzs(toUzs(s.sellUsd))}</span>${S.branches.length > 1 ? `<span class="pbranch">${esc(bName(s.branchId))}</span>` : ""}</span></button>`;
+      <span class="pprice">${uzs(sellUzs(s.sellUsd))}</span>${S.branches.length > 1 ? `<span class="pbranch">${esc(bName(s.branchId))}</span>` : ""}</span></button>`;
 }
 const stockMatch = s => { const q = W.q2.trim().toLowerCase(); return !q || `${s.modelName} ${s.mem} ${s.color} ${colorUz(s.color)}`.toLowerCase().includes(q); };
 function renderStockGrid() {
@@ -734,7 +737,7 @@ function renderWizard() {
   if (W.pick) return renderPick();
   const el = $("#page"), l = stepList();
   let h = `<div class="stepper">${l.map((s, i) => `<div class="st ${s === W.step ? "on" : ""} ${s < W.step ? "done" : ""}"><div class="c">${s < W.step ? "✓" : i + 1}</div>${stepName(s)}</div>`).join("")}</div>`;
-  if (W.pre && W.step === 0 && ourStock()) { const s = ourStock(); h += `<div class="chosen"><span class="pimg">${imgOf(s)}</span><div><small>${t("Siz tanlagan telefon")}</small><b>${esc(s.modelName)} ${esc(s.mem || "")}</b><span>${uzs(toUzs(s.sellUsd))}</span></div><button class="qback" data-act="home">${t("O'zgartirish")}</button></div>`; }
+  if (W.pre && W.step === 0 && ourStock()) { const s = ourStock(); h += `<div class="chosen"><span class="pimg">${imgOf(s)}</span><div><small>${t("Siz tanlagan telefon")}</small><b>${esc(s.modelName)} ${esc(s.mem || "")}</b><span>${uzs(sellUzs(s.sellUsd))}</span></div><button class="qback" data-act="home">${t("O'zgartirish")}</button></div>`; }
   if (W.step === 0) h += W.q < SUMMARY ? questionHtml() : summaryHtml();
   if (W.step === 1) h += hero("⇄", t("Yangi telefonni tanlang"), t("Do'konlarimizda sotuvdagi telefonlar")) + `<input class="inp" id="q2" placeholder="${esc(t("Qidirish: model, xotira yoki rang"))}" value="${esc(W.q2)}" style="margin-bottom:12px"><div class="pgrid" id="stockGrid"></div><div id="compare"></div>`;
   if (W.step === 2) h += payHtml();
@@ -748,7 +751,7 @@ function renderWizard() {
 function renderPick() {
   const s = ourStock(); if (!s) { W = freshW(); return renderHome(); }
   $("#page").innerHTML = `<button class="qback" data-act="home">${t("← Orqaga")}</button>
-  <div class="chosen"><span class="pimg">${imgOf(s)}</span><div><small>${t("Siz tanlagan telefon")}</small><b>${esc(s.modelName)} ${esc(s.mem || "")}</b><span>${uzs(toUzs(s.sellUsd))}</span></div></div>
+  <div class="chosen"><span class="pimg">${imgOf(s)}</span><div><small>${t("Siz tanlagan telefon")}</small><b>${esc(s.modelName)} ${esc(s.mem || "")}</b><span>${uzs(sellUzs(s.sellUsd))}</span></div></div>
   <h2 class="qt">${t("Qanday xarid qilasiz?")}</h2>
   <div class="olist"><button class="opt" data-act="pickBuy"><b>${t("Muddatli to'lovga olish")}</b><br><small>${t("Oyma-oy bo'lib to'laysiz")}</small></button>
   <button class="opt" data-act="pickTrade"><b>${t("Trade-in: eski telefonimni topshirib olish")}</b><br><small>${t("Telefoningiz narxi ayirib tashlanadi")}</small></button></div>`;
@@ -790,7 +793,7 @@ function summaryHtml() {
 }
 function renderCompare() {
   const s = ourStock(), el = $("#compare"); if (!el) return; if (!s) { el.innerHTML = ""; return; }
-  const c = clientCalc(), our = toUzs(s.sellUsd), diff = our - c.uzs;
+  const c = clientCalc(), our = sellUzs(s.sellUsd), diff = our - c.uzs;
   el.innerHTML = `<div class="compare"><div class="box"><div class="k">${t("Yangi telefon")}</div><div class="v">${uzs(our)}</div></div><div class="op">−</div><div class="box"><div class="k">${t("Sizning telefoningiz")}</div><div class="v">${uzs(c.uzs)}</div></div><div class="op">=</div><div class="box hl"><div class="k">${t(diff > 0 ? "Qo'shib to'laysiz" : "Sizga qaytariladi")}</div><div class="v">${uzs(Math.abs(diff))}</div></div></div>`;
 }
 function payHtml() {
@@ -802,7 +805,7 @@ function payHtml() {
       <h3>${t("Bo'lib to'lash muddati")}</h3>${slider("mRange", W.months)}<div id="planBox">${planHtml(diff)}</div>`;
   }
   let h = `<button class="qback" data-act="prev">${t("← Orqaga")}</button>` + hero("₪", t("To'lov"), `${esc(s.modelName)} ${esc(s.mem || "")}`) +
-    `<div class="compare" style="margin:0 0 16px"><div class="box"><div class="k">${t("Yangi telefon")}</div><div class="v">${uzs(toUzs(s.sellUsd))}</div></div><div class="op">−</div><div class="box"><div class="k">${t("Sizning telefoningiz")}</div><div class="v">${uzs(c.uzs)}</div></div></div>`;
+    `<div class="compare" style="margin:0 0 16px"><div class="box"><div class="k">${t("Yangi telefon")}</div><div class="v">${uzs(sellUzs(s.sellUsd))}</div></div><div class="op">−</div><div class="box"><div class="k">${t("Sizning telefoningiz")}</div><div class="v">${uzs(c.uzs)}</div></div></div>`;
   if (diff <= 0) return h + `<div class="price" style="margin-top:0"><div class="price-top"><div class="ic">$</div><div><small>${t("Telefoningiz qimmatroq")}</small><b>${t("Sizga qaytariladi")}</b></div></div><div class="total"><span>${t("Jami:")}</span><b>${sum(-diff)}</b></div></div><p class="hint">${t("Bu holatda qo'shimcha to'lov kerak emas.")}</p>`;
   if (W.months > maxM()) W.months = maxM();
   return h + `<div class="price" style="margin-top:0"><div class="price-top"><div class="ic">$</div><div><small>${t("Yangi telefon − sizning telefoningiz")}</small><b>${t("Qo'shib to'laysiz")}</b></div></div><div class="total"><span>${t("Jami:")}</span><b>${sum(diff)}</b></div></div>
@@ -821,7 +824,7 @@ function formHtml() {
   const top = W.buy
     ? hero("✓", t("Ariza qoldiring"), t("Sotuvchimiz qo'ng'iroq qilib, tafsilotlarni kelishib oladi")) + `
   <div class="kv" style="margin-top:0">
-    <div><div class="k">${t("Siz olasiz")}</div><div class="v" style="font-size:16px">${esc(s.modelName)} ${esc(s.mem || "")}</div><div class="k">${uzs(toUzs(s.sellUsd))}</div></div>
+    <div><div class="k">${t("Siz olasiz")}</div><div class="v" style="font-size:16px">${esc(s.modelName)} ${esc(s.mem || "")}</div><div class="k">${uzs(sellUzs(s.sellUsd))}</div></div>
     <div class="big"><div class="k">${t("Oylik to'lov, {n} oy", {n: W.months})}</div><div class="v">${uzs(p.monthly)}</div></div>
   </div>`
     : W.sell
@@ -830,7 +833,7 @@ function formHtml() {
     : hero("✓", t("Ariza qoldiring"), t("Sotuvchimiz qo'ng'iroq qilib, tafsilotlarni kelishib oladi")) + `
   <div class="kv" style="margin-top:0">
     <div><div class="k">${t("Siz topshirasiz")}</div><div class="v" style="font-size:16px">${esc(curModel().name)} ${esc(W.mem)}</div><div class="k">${uzs(c.uzs)}</div></div>
-    <div><div class="k">${t("Siz olasiz")}</div><div class="v" style="font-size:16px">${esc(s.modelName)} ${esc(s.mem || "")}</div><div class="k">${uzs(toUzs(s.sellUsd))}</div></div>
+    <div><div class="k">${t("Siz olasiz")}</div><div class="v" style="font-size:16px">${esc(s.modelName)} ${esc(s.mem || "")}</div><div class="k">${uzs(sellUzs(s.sellUsd))}</div></div>
     <div class="big"><div class="k">${p ? t("Oylik to'lov, {n} oy", {n: W.months}) : t("Sizga qaytariladi")}</div><div class="v">${p ? uzs(p.monthly) : uzs(Math.abs(diff))}</div></div>
   </div>`;
   return `<button class="qback" data-act="prev">${t("← Orqaga")}</button>` + top + `
@@ -889,7 +892,7 @@ async function saveAriza() {
       S.settings = fresh; W.saving = false; W.step = 0; W.q = SUMMARY; W.sell = false; renderWizard(); window.scrollTo(0, 0);
       return toast(t("Narxlar yangilandi. Yangi bahoni ko'rib, arizani qayta yuboring"), true);
     }
-    const diff = st ? toUzs(st.sellUsd) - c.uzs : 0, p = st && diff > 0 ? plan(diff, W.months) : null;
+    const diff = st ? sellUzs(st.sellUsd) - c.uzs : 0, p = st && diff > 0 ? plan(diff, W.months) : null;
     const ref = doc(collection(db, "arizalar")), no = ref.id.slice(0, 6).toUpperCase(), phone = "998" + W.phone;
     await setDoc(ref, {
       // Telefon tanlanmagan (sotish uchun murojaat) — ariza barcha filiallarga ko'rinadi
@@ -897,7 +900,7 @@ async function saveAriza() {
       client: {name: W.name.slice(0, 60), phone}, note: W.note.slice(0, 500),
       device: {modelId: m.id, brand: m.brand, name: m.name, mem: W.mem, color: W.color, answers: answers(),
                calc: {usd: c.usd, uzs: c.uzs, points: c.points, grade: c.grade, gradeLetter: c.gradeLetter || "D", fv: 7}},
-      deviceUzs: c.uzs, stockId: st ? st.id : "", ourModel: st ? `${st.modelName} ${st.mem || ""}`.trim() : "", ourUzs: st ? toUzs(st.sellUsd) : 0,
+      deviceUzs: c.uzs, stockId: st ? st.id : "", ourModel: st ? `${st.modelName} ${st.mem || ""}`.trim() : "", ourUzs: st ? sellUzs(st.sellUsd) : 0,
       diffUzs: diff, payType: p ? "nasiya" : "", months: p ? W.months : 0, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0,
       kurs: S.settings.kurs, createdAt: serverTimestamp()});
     // Meta Pixel: ariza yuborildi — "Lead" hodisasi
@@ -914,7 +917,7 @@ async function saveBuy(st) {
   try {
     const fresh = (await getDoc(doc(db, "settings", "main"))).data();
     if (stable(fresh) !== stable(S.settings)) { S.settings = fresh; W.saving = false; renderWizard(); return toast(t("Narxlar yangilandi. Yangi hisobni ko'rib, arizani qayta yuboring"), true); }
-    const price = toUzs(st.sellUsd), p = plan(price, W.months);
+    const price = sellUzs(st.sellUsd), p = plan(price, W.months);
     const ref = doc(collection(db, "arizalar")), no = ref.id.slice(0, 6).toUpperCase(), phone = "998" + W.phone;
     await setDoc(ref, {status: "yangi", no, branchId: st.branchId || "", client: {name: W.name.slice(0, 60), phone}, note: W.note.slice(0, 500),
       device: {}, deviceUzs: 0, stockId: st.id, ourModel: `${st.modelName} ${st.mem || ""}`.trim(), ourUzs: price,
