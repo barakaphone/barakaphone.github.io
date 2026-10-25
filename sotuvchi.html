@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.24-2"></script>
+<script src="shartnoma.js?v=2026.10.25-1"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.24-2";
+const APP_VERSION = "2026.10.25-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -1015,7 +1015,7 @@ const isBuyAriza = x => !!x.ourModel && !x.device?.name;
 function buyInfoHtml(x) {
   const b = x.bought, l = x.listed;
   if (!b) return "";
-  return `<div class="note" style="margin:8px 0 0"><b>Sotib olindi:</b> ${uzs(b.priceUzs)}${b.byName ? ` · ${esc(b.byName)}` : ""}${b.at ? ` · ${fdt(b.at)}` : ""}
+  return `<div class="note" style="margin:8px 0 0"><b>Sotib olindi:</b> ${b.origPriceUzs ? `<s style="opacity:.55">${uzs(b.origPriceUzs)}</s> ` : ""}${uzs(b.priceUzs)}${b.byName ? ` · ${esc(b.byName)}` : ""}${b.at ? ` · ${fdt(b.at)}` : ""}
     ${b.imei || b.passport ? `<br>IMEI: <b>${esc(b.imei || "—")}</b> · Pasport: <b>${esc(b.passport || "—")}</b>` : ""}
     ${l ? `<br><b>Sotuvga chiqarildi:</b> ${uzs(l.sellUzs)}${l.byName ? ` · ${esc(l.byName)}` : ""}` : ""}
     <br><button class="btn sec sm" style="margin-top:6px" data-bphotos="${x.id}">📷 Rasmlar (${b.photoCount || 6})</button> <button class="btn sec sm" style="margin-top:6px" data-bcontract="${x.id}">📄 Shartnoma</button></div>`;

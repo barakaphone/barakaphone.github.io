@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.24-2"></script>
+<script src="shartnoma.js?v=2026.10.25-1"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.24-2";
+const APP_VERSION = "2026.10.25-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -1073,7 +1073,7 @@ const isBuyAriza = x => !!x.ourModel && !x.device?.name;
 function buyInfoHtml(x) {
   const b = x.bought, l = x.listed;
   if (!b) return "";
-  return `<div class="note" style="margin:8px 0 0"><b>Sotib olindi:</b> ${uzs(b.priceUzs)}${b.byName ? ` · ${esc(b.byName)}` : ""}${b.at ? ` · ${fdt(b.at)}` : ""}
+  return `<div class="note" style="margin:8px 0 0"><b>Sotib olindi:</b> ${b.origPriceUzs ? `<s style="opacity:.55">${uzs(b.origPriceUzs)}</s> ` : ""}${uzs(b.priceUzs)}${b.byName ? ` · ${esc(b.byName)}` : ""}${b.at ? ` · ${fdt(b.at)}` : ""}
     ${b.imei || b.passport ? `<br>IMEI: <b>${esc(b.imei || "—")}</b> · Pasport: <b>${esc(b.passport || "—")}</b>` : ""}
     ${l ? `<br><b>Sotuvga chiqarildi:</b> ${uzs(l.sellUzs)}${l.byName ? ` · ${esc(l.byName)}` : ""}` : ""}
     <br><button class="btn sec sm" style="margin-top:6px" data-bphotos="${x.id}">📷 Rasmlar (${b.photoCount || 6})</button> <button class="btn sec sm" style="margin-top:6px" data-bcontract="${x.id}">📄 Shartnoma</button></div>`;
@@ -1493,6 +1493,13 @@ function renderArizalar() {
     };
     if ($("#opDel")) $("#opDel").onclick = () => save({ourUzs: orig, ourOrigUzs: deleteField(), ourReason: deleteField(), ourByName: deleteField()});
   });
+  // Telefon allaqachon sotib olingan bo'lsa — baho o'zgarganda shartnomadagi (bought) narx ham o'zgaradi; null — asl narxga qaytadi
+  const boughtPrice = (x, v) => {
+    if (!x.bought?.priceUzs) return {};
+    const orig = x.bought.origPriceUzs ?? x.bought.priceUzs, b = {...x.bought, priceUzs: v ?? orig};
+    if (v == null || v === orig) delete b.origPriceUzs; else b.origPriceUzs = orig;
+    return {bought: b};
+  };
   document.querySelectorAll("[data-arzprice]").forEach(b => b.onclick = () => {
     const x = S.arizalar.find(a => a.id === b.dataset.arzprice);
     modal(`<h2>Bahoni o'zgartirish</h2><p class="sub">${esc(x.device?.name || "")} ${esc(x.device?.mem || "")}. Hisoblangan baho: <b>${uzs(x.deviceUzs)}</b></p>
@@ -1510,9 +1517,9 @@ function renderArizalar() {
       const v = Math.round(+digits($("#apVal").value) / 1000) * 1000, why = $("#apWhy").value.trim(), er = $("#apErr");
       if (!(v > 0)) { er.textContent = "Bahoni kiriting"; return er.classList.remove("hidden"); }
       if (why.length < 3) { er.textContent = "Sababini yozing"; return er.classList.remove("hidden"); }
-      save({manualUzs: v, manualReason: why, manualByName: S.me.fullName || "", ...repay(x, v)});
+      save({manualUzs: v, manualReason: why, manualByName: S.me.fullName || "", ...repay(x, v), ...boughtPrice(x, v)});
     };
-    if ($("#apDel")) $("#apDel").onclick = () => save({manualUzs: deleteField(), manualReason: deleteField(), manualByName: deleteField(), ...repay(x, x.deviceUzs)});
+    if ($("#apDel")) $("#apDel").onclick = () => save({manualUzs: deleteField(), manualReason: deleteField(), manualByName: deleteField(), ...repay(x, x.deviceUzs), ...boughtPrice(x, null)});
   });
   document.querySelectorAll("[data-arzdel]").forEach(b => b.onclick = async () => {
     if (!await confirmBox("Arizani butunlay o'chirasizmi?", "O'chirish")) return;
