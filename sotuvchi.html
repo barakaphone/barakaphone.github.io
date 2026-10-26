@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.25-1"></script>
+<script src="shartnoma.js?v=2026.10.26-1"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.25-1";
+const APP_VERSION = "2026.10.26-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -364,6 +364,9 @@ function battAdj(m, a, s) {
   // Sikl narxga ta'sir qilmaydi — faqat sig'im
   return out;
 }
+// SIM turi: "eSIM + eSIM" (jismoniy SIM joyi yo'q) bo'lsa narxdan qat'iy summa ayiriladi (standart 50$); iPhone 14 va yangilari uchun so'raladi
+const hasEsim = m => !!m && m.brand === "Apple" && /iPhone (1[4-9]|[2-9]\d|Air)/i.test(m.name);
+const esimUsd = (a, s) => a.sim === "esim" ? (s.esimUsd ?? 50) : 0;
 function calcTradein(m, mem, a, s) {
   const mi = Math.max(0, m.mems.indexOf(mem));
   const market = m.market + m.step * mi;
@@ -378,8 +381,8 @@ function calcTradein(m, mem, a, s) {
   let k = 1; lines.forEach(l => k *= 1 - l[1] / 100); if (a.box === "no") k *= 1 - s.noBoxPct / 100;
   // Batareya sig'imi va sikli ham narxga to'g'ridan-to'g'ri ta'sir qiladi
   const adj = battAdj(m, a, s); adj.forEach(x => k *= 1 - x[1] / 100);
-  const u = Math.round(base * k * 100) / 100;
-  return {usd: u, uzs: toUzs(u), points: pts, gi, grade: s.grades[gi].label, gradeLetter: ["A", "B", "C", "D"][Math.min(gi, 3)], lines, adj, sellUsd: Math.round(u * 100 / (100 - s.discPct))};
+  const es = esimUsd(a, s), u = Math.max(0, Math.round((base * k - es) * 100) / 100);
+  return {esUsd: es, usd: u, uzs: toUzs(u), points: pts, gi, grade: s.grades[gi].label, gradeLetter: ["A", "B", "C", "D"][Math.min(gi, 3)], lines, adj, sellUsd: Math.round(u * 100 / (100 - s.discPct))};
 }
 const maxM = () => S.settings.tiers[S.settings.tiers.length - 1].to;
 const rateFor = m => (S.settings.tiers.find(t => m <= t.to) || S.settings.tiers[S.settings.tiers.length - 1]).rate;
@@ -615,6 +618,7 @@ const QS = [
   {k: "model", t: "Aniq modeli qaysi?"},
   {k: "mem", t: "Xotira hajmi qancha?"},
   {k: "color", t: "Rangi qanday?"},
+  {k: "sim", t: "SIM karta turi qanday?", hint: "Sozlamalar → Umumiy → Ushbu qurilma haqida: \"Jismoniy SIM\" qatori bo'lsa — SIM + eSIM.", opts: [["sim", "SIM + eSIM"], ["esim", "eSIM + eSIM (SIM joyi yo'q)"]], cond: () => hasEsim(curModel())},
   {k: "power", t: "Telefon yoqiladimi?", opts: [["yes", "Ha, yoqiladi"], ["no", "Yo'q, yoqilmaydi"]]},
   {k: "lock", t: "iCloud yoki Google akkauntdan chiqilganmi?", hint: "Sozlamalarda akkaunt ko'rinmasligi va \"Telefonni topish\" o'chirilgan bo'lishi kerak.", opts: [["off", "Ha, chiqilgan"], ["on", "Yo'q, akkaunt bog'langan"]]},
   {k: "screen", t: "Ekran holati qanday?", pts: 1, hint: "Ekranni yorug'da, turli burchakdan ko'zdan kechiring."},
@@ -636,7 +640,7 @@ const GENERIC_COLORS = ["Qora", "Oq", "Kumush", "Kulrang", "Oltin", "Ko'k", "Yas
 const APPLE_COLORS = {"iphone-18-pro-max":["Black","Silver","Burgundy","Blue"],"iphone-18-pro":["Black","Silver","Burgundy","Glacier Blue"],"iphone-17-pro-max":["Cosmic Orange","Deep Blue","Silver"],"iphone-17-pro":["Cosmic Orange","Deep Blue","Silver"],"iphone-air":["Space Black","Cloud White","Light Gold","Sky Blue"],"iphone-17":["Black","White","Lavender","Mist Blue","Sage"],"iphone-16-pro-max":["Black Titanium","White Titanium","Natural Titanium","Desert Titanium"],"iphone-16-pro":["Black Titanium","White Titanium","Natural Titanium","Desert Titanium"],"iphone-16-plus":["Black","White","Pink","Teal","Ultramarine"],"iphone-16":["Black","White","Pink","Teal","Ultramarine"],"iphone-16e":["Black","White"],"iphone-15-pro-max":["Black Titanium","White Titanium","Blue Titanium","Natural Titanium"],"iphone-15-pro":["Black Titanium","White Titanium","Blue Titanium","Natural Titanium"],"iphone-15-plus":["Black","Blue","Green","Yellow","Pink"],"iphone-15":["Black","Blue","Green","Yellow","Pink"],"iphone-14-pro-max":["Space Black","Silver","Gold","Deep Purple"],"iphone-14-pro":["Space Black","Silver","Gold","Deep Purple"],"iphone-14-plus":["Midnight","Starlight","Purple","Blue","Yellow","(PRODUCT)RED"],"iphone-14":["Midnight","Starlight","Purple","Blue","Yellow","(PRODUCT)RED"],"iphone-se-2022":["Midnight","Starlight","(PRODUCT)RED"],"iphone-13-pro-max":["Graphite","Gold","Silver","Sierra Blue","Alpine Green"],"iphone-13-pro":["Graphite","Gold","Silver","Sierra Blue","Alpine Green"],"iphone-13":["Midnight","Starlight","Blue","Pink","Green","(PRODUCT)RED"],"iphone-13-mini":["Midnight","Starlight","Blue","Pink","Green","(PRODUCT)RED"],"iphone-12-pro-max":["Graphite","Silver","Gold","Pacific Blue"],"iphone-12-pro":["Graphite","Silver","Gold","Pacific Blue"],"iphone-12":["Black","White","Blue","Green","Purple","(PRODUCT)RED"],"iphone-12-mini":["Black","White","Blue","Green","Purple","(PRODUCT)RED"],"iphone-11-pro-max":["Space Gray","Silver","Gold","Midnight Green"],"iphone-11-pro":["Space Gray","Silver","Gold","Midnight Green"],"iphone-11":["Black","White","Purple","Yellow","Green","(PRODUCT)RED"],"iphone-xs-max":["Space Gray","Silver","Gold"],"iphone-xs":["Space Gray","Silver","Gold"],"iphone-xr":["Black","White","Blue","Yellow","Coral","(PRODUCT)RED"],"galaxy-s25-ultra":["Titanium Silverblue","Titanium Black","Titanium Gray","Titanium Whitesilver"],"galaxy-s25":["Navy","Icyblue","Mint","Silver Shadow"],"galaxy-z-fold6":["Silver Shadow","Pink","Navy"],"galaxy-z-flip6":["Blue","Yellow","Mint","Silver Shadow"],"galaxy-s24-ultra":["Titanium Black","Titanium Gray","Titanium Violet","Titanium Yellow"],"galaxy-s24":["Onyx Black","Marble Grey","Cobalt Violet","Amber Yellow"],"galaxy-s23-ultra":["Phantom Black","Cream","Green","Lavender"],"galaxy-s23":["Phantom Black","Cream","Green","Lavender"],"galaxy-a55":["Awesome Navy","Awesome Iceblue","Awesome Lilac","Awesome Lemon"],"galaxy-a35":["Awesome Navy","Awesome Iceblue","Awesome Lilac","Awesome Lemon"],"galaxy-a54":["Awesome Graphite","Awesome White","Awesome Violet","Awesome Lime"],"xiaomi-14t-pro":["Titan Black","Titan Gray","Titan Blue"],"xiaomi-14t":["Titan Black","Titan Gray","Titan Blue","Lemon Green"],"xiaomi-13t-pro":["Black","Alpine Blue","Meadow Green"],"xiaomi-13t":["Black","Alpine Blue","Meadow Green"],"redmi-note-14-pro":["Midnight Black","Ocean Blue","Lavender Purple"],"redmi-note-13-pro":["Midnight Black","Forest Green","Lavender Purple"],"redmi-note-13":["Midnight Black","Mint Green","Ice Blue","Ocean Sunset"]};
 const appleColorsOf = m => { const s = String(m?.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); return APPLE_COLORS[{"iphone-17-air": "iphone-air"}[s] || s] || []; };
 const colorsOf = m => (m?.colors || []).length ? m.colors : appleColorsOf(m).length ? appleColorsOf(m) : GENERIC_COLORS;
-const answers = () => ({power: W.power, lock: W.lock, screen: W.screen, body: W.body, batt: W.batt, cyc: hasCycles(curModel()) ? W.cyc : null, bio: W.bio, cam: W.cam, repair: W.repair, box: W.box});
+const answers = () => ({sim: hasEsim(curModel()) ? (W.sim || "sim") : null, power: W.power, lock: W.lock, screen: W.screen, body: W.body, batt: W.batt, cyc: hasCycles(curModel()) ? W.cyc : null, bio: W.bio, cam: W.cam, repair: W.repair, box: W.box});
 const autoCalc = () => { const m = curModel(); return m && W.mem ? calcTradein(m, W.mem, answers(), S.settings) : null; };
 // Tekshiruvda xato topilsa sotuvchi narxni qo'lda o'zgartiradi (W.manual) — shartnoma shu narx bilan tuziladi
 const clientCalc = () => {
@@ -732,6 +736,7 @@ function summaryHtml() {
   if (c.parts) h += `<div class="note">Telefon yoqilmaydi — faqat ehtiyot qism sifatida baholandi.</div>`;
   else h += `<div class="extra"><div><span class="t">Qutisi</span><span class="pill">${W.box === "no" ? "Yo'q" : "Bor"}</span></div><div><span class="t">Shikast</span><span class="pill">${esc(gradeName(c.gi))}</span></div><div><span class="t">Batareya</span><span class="pill">${W.batt}%${hasCycles(m) && W.cyc != null ? " · " + W.cyc + " sikl" : ""}</span></div></div>
     <div class="ptsbox"><div style="display:flex;justify-content:space-between"><b>Nuqsonlar</b><b>${c.points ? "−" + c.points + "%" : ""}</b></div><ul>${c.lines.length ? c.lines.map(l => `<li><span>${esc(l[0])}</span><span>−${l[1]}%</span></li>`).join("") : "<li><span>Nuqson topilmadi</span><span>0</span></li>"}</ul>
+    ${c.esUsd ? `<div style="margin-top:8px"><b>SIM</b></div><ul><li><span>eSIM + eSIM</span><span>−${c.esUsd}$</span></li></ul>` : ""}
     ${c.adj?.length ? `<div style="margin-top:8px"><b>Batareya ta'siri</b></div><ul>${c.adj.map(l => `<li><span>${esc(l[0])}</span><span>−${l[1]}%</span></li>`).join("")}</ul>` : ""}
     <div class="scale">${S.settings.grades.map((g, i) => `<div class="${i === c.gi ? "on" : ""}">${esc(gradeName(i))}</div>`).join("")}</div></div>`;
   return h + `<div class="price"><div class="price-top"><div class="ic">$</div><div><small>${c.manual ? "Qo'lda o'zgartirilgan narx" : "Hisoblangan narx"}</small><b>Trade-in qiymati</b></div><span class="usd">${usd(c.usd)}</span></div><div class="total"><span>Jami:</span><b>${sum(c.uzs)}</b></div></div>
@@ -773,7 +778,7 @@ function renderAction() {
 const refreshNext = () => { const b = document.querySelector("[data-act=next]"); if (b) b.disabled = !canNext(); };
 function answer(k, v) {
   if (k === "brand" && W.brand !== v) { W.modelId = null; W.mem = null; W.color = ""; W.mq = ""; }
-  if (k === "model") { if (W.modelId !== v) { W.mem = null; W.color = ""; } W.modelId = v; } else W[k] = v;
+  if (k === "model") { if (W.modelId !== v) { W.mem = null; W.color = ""; W.sim = null; } W.modelId = v; } else W[k] = v;
   let next = W.q + 1; while (QS[next] && QS[next].cond && !QS[next].cond()) next++;
   if ((k === "power" && v === "no") || (k === "lock" && v === "on")) next = SUMMARY;
   W.manual = null;   // javob o'zgarsa, qo'lda kiritilgan narx bekor bo'ladi
@@ -1399,7 +1404,7 @@ function startFromAriza(x) {
   W = freshW();
   Object.assign(W, {brand: m.brand, modelId: m.id, mem: m.mems.includes(d.mem) ? d.mem : null, color: d.color || "",
     power: a.power ?? null, lock: a.lock ?? null, screen: a.screen ?? null, body: a.body ?? null, batt: a.batt ?? 100, cyc: a.cyc ?? null,
-    bio: a.bio ?? null, cam: a.cam ?? null, repair: a.repair ?? null, box: a.box ?? null, arizaId: x.id, arizaNo: x.no || x.id.slice(0, 6).toUpperCase(),
+    sim: a.sim ?? null, bio: a.bio ?? null, cam: a.cam ?? null, repair: a.repair ?? null, box: a.box ?? null, arizaId: x.id, arizaNo: x.no || x.id.slice(0, 6).toUpperCase(),
     // Telefon allaqachon sotib olingan bo'lsa — shartnoma o'sha narx bilan tuziladi
     manual: x.bought?.priceUzs ? {uzs: x.bought.priceUzs, reason: "Sotib olingan narx"} : x.manualUzs ? {uzs: x.manualUzs, reason: x.manualReason || "Admin arizada o'zgartirgan"} : null});
   // Mijoz barcha savollarga javob bergan; xotira hajmi ro'yxatdan o'chirilgan bo'lsa — o'sha savoldan davom etadi
