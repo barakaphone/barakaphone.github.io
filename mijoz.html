@@ -316,7 +316,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.26-1";
+const APP_VERSION = "2026.10.26-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -378,8 +378,8 @@ function battAdj(m, a, s) {
   // Sikl narxga ta'sir qilmaydi — faqat sig'im
   return out;
 }
-// SIM turi: "eSIM + eSIM" (jismoniy SIM joyi yo'q) bo'lsa narxdan qat'iy summa ayiriladi (standart 50$); iPhone 14 va yangilari uchun so'raladi
-const hasEsim = m => !!m && m.brand === "Apple" && /iPhone (1[4-9]|[2-9]\d|Air)/i.test(m.name);
+// SIM turi: "eSIM + eSIM" (jismoniy SIM joyi yo'q) bo'lsa narxdan qat'iy summa ayiriladi (standart 50$); iPhone 15 va yangilari uchun so'raladi
+const hasEsim = m => !!m && m.brand === "Apple" && /iPhone (1[5-9]|[2-9]\d|Air)/i.test(m.name);
 const esimUsd = (a, s) => a.sim === "esim" ? (s.esimUsd ?? 50) : 0;
 function calcTradein(m, mem, a, s) {
   const mi = Math.max(0, m.mems.indexOf(mem));
