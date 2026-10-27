@@ -270,6 +270,7 @@ select.inp{appearance:auto}
 .cycu{font-size:16px!important;font-weight:600!important}
 .memo ul{margin:0;padding:0;list-style:none}.memo li{padding:2px 0 2px 26px;position:relative}.memo li::before{content:"✅";position:absolute;left:0}
 .memo p{margin:8px 0 0}
+.admtels{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-6px 0 18px}.admtels .admtel{margin:0}@media (max-width:640px){.admtels{grid-template-columns:1fr}}
 .admtel{display:flex;align-items:center;justify-content:center;gap:6px;margin:-6px 0 18px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--g);text-decoration:none;font-size:16px}
 .hbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
 @media (max-width:640px){.hbtns{grid-template-columns:1fr}}
@@ -316,7 +317,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.27-3";
+const APP_VERSION = "2026.10.27-4";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -728,7 +729,7 @@ function renderHome() {
   $("#page").innerHTML = `<div class="welcome"><h1>${t("Eski iPhone'ingizni yangisiga almashtiring")}</h1>
 </div>
   <div class="hbtns"><button class="btn pri" data-act="start">${t("Telefonimni almashtirish →")}</button><button class="btn sec" data-act="startSell">${t("Telefonimni sotish")}</button></div>
-  <a class="admtel" href="tel:+998900550392">📞 ${t("Admin")}: <b>+998 90 055 03 92</b></a>
+  <div class="admtels"><a class="admtel" href="tel:+998911549944">📞 ${t("Admin")} Malika: <b>+998 91 154 99 44</b></a><a class="admtel" href="tel:+998900573915">📞 ${t("Admin")} Anora: <b>+998 90 057 39 15</b></a></div>
   <h3 style="margin-top:0">${t("Sotuvdagi telefonlar")}</h3>
   <input class="inp" id="q2" placeholder="${esc(t("Qidirish: model, xotira yoki rang"))}" value="${esc(W.q2)}" style="margin-bottom:12px">
   <div class="pgrid" id="stockGrid"></div>`;
