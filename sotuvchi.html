@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.26-2"></script>
+<script src="shartnoma.js?v=2026.10.27-1"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.26-2";
+const APP_VERSION = "2026.10.27-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -1254,25 +1254,35 @@ const bfPlan = (diff, m) => { const monthly = Math.ceil((diff + diff * bfRate(m)
 const bfIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const bfAddM = (d, n) => { const x = new Date(d), day = x.getDate(); x.setDate(1); x.setMonth(x.getMonth() + n); x.setDate(Math.min(day, new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); return x; };
 const bfSchedule = (p, m) => Array.from({length: m}, (_, i) => ({n: i + 1, due: bfIso(bfAddM(new Date(), i + 1)), amount: p.monthly, paid: false}));
+// Mijoz boshqa telefon olsa — ombordagi "Sotuvda" telefonlardan tanlanadi (narx va nasiya qayta hisoblanadi)
+const soldPool = () => S.stock.filter(s => s.status === "sotuvda").sort((a, b) => String(a.modelName).localeCompare(String(b.modelName), "uz", {numeric: true}));
+function soldPickHtml(st) {
+  const pool = soldPool(), lbl = s => `${s.modelName} ${s.mem || ""}${s.color ? " · " + s.color : ""} · ${uzs(sellUzs(s.sellUsd))}${IS_ADMIN && S.branches.length > 1 ? " · " + bName(s.branchId) : ""}`;
+  return `<div class="field" style="margin-top:12px"><label for="sStock">Mijoz oladigan telefon</label><select class="inp" id="sStock">
+    ${pool.some(s => s.id === st.id) ? "" : `<option value="" selected disabled>${esc(st.modelName || "Telefon")} ${esc(st.mem || "")} — sotuvda emas, boshqasini tanlang</option>`}
+    ${pool.map(s => `<option value="${s.id}" ${s.id === st.id ? "selected" : ""}>${esc(lbl(s))}</option>`).join("")}</select>
+    ${pool.length ? "" : `<div class="src">Omborda "Sotuvda" telefon yo'q</div>`}</div>`;
+}
 function renderSoldModal() {
   const x = S.arizalar.find(a => a.id === SOLD.id), st = SOLD.stock, our = ourPriceOf(x, st), dev = x.bought.priceUzs, diff = our - dev;
   const m = Math.min(SOLD.months, bfMaxM()), p = diff > 0 ? bfPlan(diff, m) : null;
   modal(`<h2>Bizning telefon sotildi</h2><p class="src" style="margin:0 0 10px">${esc(x.client?.name || "")} · ${esc(fmtPhone(x.client?.phone))} · pasport ${esc(x.bought.passport || "—")}</p>
   <div class="sgrid"><div><div class="k">Mijoz topshirdi</div><b>${esc(x.device?.name || "")} ${esc(x.device?.mem || "")}</b><div>${uzs(dev)}</div></div>
-    <div><div class="k">Mijoz oladi</div><b>${esc(st.modelName)} ${esc(st.mem || "")}</b><div>${uzs(our)}</div></div>
+    <div><div class="k">Mijoz oladi</div><b>${esc(st.modelName || "")} ${esc(st.mem || "")}</b><div>${st.sellUsd ? uzs(our) : "—"}</div></div>
     <div class="hl"><div class="k">${diff > 0 ? "Qolgan summa" : "Mijozga qaytariladi"}</div><b>${uzs(Math.abs(diff))}</b></div></div>
   ${diff > 0 ? `<div class="field" style="margin-top:12px"><label for="sMonths">Nasiya muddati</label><select class="inp" id="sMonths">${Array.from({length: bfMaxM()}, (_, i) => i + 1).map(n => `<option value="${n}" ${n === m ? "selected" : ""}>${n} oy</option>`).join("")}</select></div>
     <div class="sgrid"><div><div class="k">Oylik to'lov</div><b>${uzs(p.monthly)}</b></div><div><div class="k">Jami to'lov</div><b>${uzs(p.total)}</b></div></div>` : ""}
-  ${st.status !== "sotuvda" ? `<div class="err">Bu telefon omborda "Sotuvda" emas (hozir: ${esc(st.status || "—")}). Boshqa telefon tanlash uchun trade-in'ni sotuvchi ilovasida boshlang.</div>` : ""}
+  ${soldPickHtml(st)}
+  ${st.status !== "sotuvda" ? `<div class="err">Bu telefon omborda "Sotuvda" emas (hozir: ${esc(st.status || "—")}). Yuqoridagi ro'yxatdan boshqa telefon tanlang.</div>` : ""}
   <div id="sErr" class="err hidden"></div>
   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn sec" id="bNo">Bekor qilish</button><button class="btn pri" id="sOk" ${st.status !== "sotuvda" || SOLD.saving ? "disabled" : ""}>${SOLD.saving ? "Saqlanmoqda…" : "✓ Shartnomani tasdiqlash"}</button></div>`);
 }
 async function openSold(id) {
   const x = S.arizalar.find(a => a.id === id);
   try {
-    const sn = await getDoc(doc(db, "stock", x.stockId));
-    if (!sn.exists()) return toast("Mijoz tanlagan telefon omborda topilmadi", true);
-    SOLD = {id, stock: {id: sn.id, ...sn.data()}, months: x.months || 6, saving: false}; renderSoldModal();
+    const sn = x.stockId ? await getDoc(doc(db, "stock", x.stockId)).catch(() => null) : null;
+    const stock = sn?.exists() ? {id: sn.id, ...sn.data()} : {id: x.stockId || "", modelName: x.ourModel || "", status: "topilmadi"};
+    SOLD = {id, stock, months: x.months || 6, saving: false}; renderSoldModal();
   } catch (e) { toast(errText(e), true); }
 }
 async function saveSold() {
@@ -1315,7 +1325,10 @@ document.addEventListener("click", e => {
   if (b.id === "sOk") return saveSold();
   if (b.id === "bNo") SOLD = null;
 });
-document.addEventListener("change", e => { if (e.target.id === "sMonths" && SOLD) { SOLD.months = +e.target.value; renderSoldModal(); } });
+document.addEventListener("change", e => {
+  if (e.target.id === "sMonths" && SOLD) { SOLD.months = +e.target.value; renderSoldModal(); }
+  if (e.target.id === "sStock" && SOLD) { const s = soldPool().find(z => z.id === e.target.value); if (s) { SOLD.stock = s; renderSoldModal(); } }
+});
 /* IMEI bo'yicha qidiruv: oxirgi raqamlar terilsa — telefonni sotgan mijoz (ism, raqam, pasport) */
 let IMEIQ = "";
 function imeiResHtml() {
