@@ -317,7 +317,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.27-4";
+const APP_VERSION = "2026.10.28-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -528,6 +528,7 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
+  "Murojaat qoldirgandan so'ng 15 daqiqa ichida qo'ng'iroq bo'lmasa, iltimos, admin bilan bog'laning.": "Если в течение 15 минут после заявки вам не позвонили, пожалуйста, свяжитесь с администратором.",
   "SIM karta turi qanday?": "Какой тип SIM?", "SIM + eSIM": "SIM + eSIM", "eSIM + eSIM (SIM joyi yo'q)": "eSIM + eSIM (нет слота SIM)",
   "Sozlamalar → Umumiy → Ushbu qurilma haqida: \"Jismoniy SIM\" qatori bo'lsa — SIM + eSIM.": "Настройки → Основные → Об этом устройстве: если есть строка «Физическая SIM» — SIM + eSIM.",
   "Eslatma: xaridni faqat Andijon, Toshkent, Qo'qon va Farg'ona hududlarida amalga oshirishingiz mumkin.": "Обратите внимание: покупку можно оформить только в регионах Андижан, Ташкент, Коканд и Фергана.",
@@ -730,6 +731,7 @@ function renderHome() {
 </div>
   <div class="hbtns"><button class="btn pri" data-act="start">${t("Telefonimni almashtirish →")}</button><button class="btn sec" data-act="startSell">${t("Telefonimni sotish")}</button></div>
   <div class="admtels"><a class="admtel" href="tel:+998911549944">📞 ${t("Admin")} Malika: <b>+998 91 154 99 44</b></a><a class="admtel" href="tel:+998900573915">📞 ${t("Admin")} Anora: <b>+998 90 057 39 15</b></a></div>
+  <div class="warn" style="margin:-8px 0 18px;text-align:center">ℹ️ ${t("Murojaat qoldirgandan so'ng 15 daqiqa ichida qo'ng'iroq bo'lmasa, iltimos, admin bilan bog'laning.")}</div>
   <h3 style="margin-top:0">${t("Sotuvdagi telefonlar")}</h3>
   <input class="inp" id="q2" placeholder="${esc(t("Qidirish: model, xotira yoki rang"))}" value="${esc(W.q2)}" style="margin-bottom:12px">
   <div class="pgrid" id="stockGrid"></div>`;
