@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.27-1"></script>
+<script src="shartnoma.js?v=2026.10.27-2"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.27-1";
+const APP_VERSION = "2026.10.27-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -991,7 +991,7 @@ function arzCard(x) {
     <span class="src">№${esc(x.no || x.id.slice(0, 6).toUpperCase())} · ${fdt(x.createdAt)} · ${esc(bName(x.branchId))}</span></div>
   <div class="grid4">
     <div><div class="k">Topshiradi</div><div class="v">${isBuyAriza(x) ? "—" : esc(d.name) + " " + esc(d.mem)}</div><div class="src">${esc(d.color || "")}${d.calc?.grade ? " · " + esc(d.calc.grade) : ""}${battTxt(d.answers) ? " · " + battTxt(d.answers) : ""}</div></div>
-    <div><div class="k">Taxminiy baho</div><div class="v">${x.manualUzs ? `<s style="opacity:.55">${uzs(x.deviceUzs)}</s> ${uzs(x.manualUzs)}` : uzs(x.deviceUzs)}</div>${x.manualUzs ? `<div class="src">✎ ${esc(x.manualReason || "")}</div>` : ""}${d.askUzs ? `<div class="src"><b>Mijoz narxi: ${uzs(d.askUzs)}</b></div>` : ""}</div>
+    ${x.bought?.priceUzs ? `<div><div class="k">Sotib olingan narx</div><div class="v">${uzs(x.bought.priceUzs)}</div><div class="src">Taxminiy baho: ${uzs(x.deviceUzs)}</div>${x.manualUzs ? `<div class="src">✎ ${esc(x.manualReason || "")}</div>` : ""}` : `<div><div class="k">Taxminiy baho</div><div class="v">${x.manualUzs ? `<s style="opacity:.55">${uzs(x.deviceUzs)}</s> ${uzs(x.manualUzs)}` : uzs(x.deviceUzs)}</div>${x.manualUzs ? `<div class="src">✎ ${esc(x.manualReason || "")}</div>` : ""}`}${d.askUzs ? `<div class="src"><b>Mijoz narxi: ${uzs(d.askUzs)}</b></div>` : ""}</div>
     <div><div class="k">Olmoqchi</div><div class="v">${x.ourModel ? esc(x.ourModel) : "—"}</div>${x.ourModel ? `<div class="src">${x.ourOrigUzs && x.ourOrigUzs !== x.ourUzs ? `<s style="opacity:.55">${uzs(x.ourOrigUzs)}</s> <b>${uzs(x.ourUzs)}</b>` : uzs(x.ourUzs)}</div>${x.ourReason ? `<div class="src">✎ ${esc(x.ourReason)}${x.ourByName ? " (" + esc(x.ourByName) + ")" : ""}</div>` : ""}<button class="btn sec sm" style="margin-top:6px" data-ourprice="${x.id}">✎ Narxni o'zgartirish</button>` : ""}</div>
     <div><div class="k">To'lov</div><div class="v" style="white-space:normal">${esc(pay)}</div></div>
   </div>
