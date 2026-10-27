@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.27-2"></script>
+<script src="shartnoma.js?v=2026.10.27-3"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.27-2";
+const APP_VERSION = "2026.10.27-3";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -907,8 +907,11 @@ function saleCard(s) {
 async function showPhotos(dealId) {
   modal(`<h2>Rasmlar</h2><div class="loading">Yuklanmoqda…</div>`, true);
   try {
-    const snap = await getDocs(query(collection(db, "photos"), where("dealId", "==", dealId)));
-    const ph = listDocs(snap).sort((a, b) => (a.slot || 0) - (b.slot || 0));
+    // Arizadan tuzilgan shartnomada rasmlar "Sotib olindi" paytida arizaga (arizaId) biriktirilgan
+    const d = S.deals.find(x => x.id === dealId), arzId = d?.arizaId || S.arizalar.find(a => a.dealId === dealId)?.id;
+    const [s1, s2] = await Promise.all([getDocs(query(collection(db, "photos"), where("dealId", "==", dealId))),
+      arzId ? getDocs(query(collection(db, "photos"), where("arizaId", "==", arzId))) : null]);
+    const ph = [...listDocs(s1), ...(s2 ? listDocs(s2) : [])].sort((a, b) => (a.slot || 0) - (b.slot || 0));
     modal(`<h2>Rasmlar</h2><div class="photos">${ph.map(p => `<a href="${p.data}" target="_blank" rel="noopener"><img src="${p.data}" alt="${esc(p.label || "Rasm")}" title="${esc(p.label || "")}"></a>`).join("") || "<div class='empty'>Rasm yo'q</div>"}</div>
       <div class="acts"><button class="btn sec" id="phClose">Yopish</button></div>`, true);
     $("#phClose").onclick = closeModal;
@@ -1358,7 +1361,7 @@ async function saveSold() {
       device: {modelId: d.modelId || "", brand: d.brand || "Apple", name: d.name || "", mem: d.mem || "", color: d.color || "", imei: x.bought.imei || "", answers: a,
                calc: d.calc || {}, manual: {uzs: devUzs, autoUzs: x.deviceUzs || devUzs, reason: "Sotib olingan narx", by: S.me.id, byName: S.me.fullName || ""}},
       deviceUsd: devUsd, deviceUzs: devUzs, stockId: st.id, ourModel: `${st.modelName} ${st.mem || ""}`.trim(), ourUsd: st.sellUsd, ourUzs: our,
-      diffUzs: diff, months, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0, kurs, newStockId: newRef.id, photoCount: 6,
+      diffUzs: diff, months, monthlyUzs: p ? p.monthly : 0, totalUzs: p ? p.total : 0, kurs, newStockId: newRef.id, photoCount: x.bought.photoCount || 7, arizaId: x.id,
       schedule: p ? bfSchedule(p, months) : [], createdAt: serverTimestamp()});
     b.update(doc(db, "stock", st.id), {status: "sotilgan", sold: {kind: "deal", ref: dealRef.id, at: serverTimestamp(), clientName: client.name, priceUzs: our}, updatedAt: serverTimestamp()});
     b.set(newRef, {branchId, modelName: d.name || "", brand: d.brand || "Apple", mem: d.mem || "", color: d.color || "", imei: x.bought.imei || "", grade: d.calc?.gradeLetter || "D",
