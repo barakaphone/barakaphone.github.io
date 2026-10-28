@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.28-1"></script>
+<script src="shartnoma.js?v=2026.10.28-2"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.28-1";
+const APP_VERSION = "2026.10.28-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -1781,6 +1781,8 @@ function modelImgModal(m, done) {
   $("#miOk").onclick = () => save(src);
   if ($("#miDel")) $("#miDel").onclick = () => save("");
 }
+// Mijoz sahifasidagi hududlar (mijoz.html dagi REGION_GEO bilan bir xil nomlar)
+const ARZ_REGIONS = ["Toshkent", "Andijon", "Farg'ona", "Qo'qon"];
 function renderSettings() {
   const s = structuredClone(S.settings); s.sellKurs ||= s.kurs; s.esimUsd ??= 50; s.battPct ??= 1; s.cycPct ??= 1; s.cycUsd ??= 20;
   const num = (path, v, step = 1, w = 90) => `<input class="inp sm" style="width:${w}px" type="number" step="${step}" data-set="${path}" value="${v}">`;
@@ -1801,6 +1803,8 @@ function renderSettings() {
   <div class="panel"><h3 style="margin-top:0">Nuqsonlar</h3><div class="tw"><table><thead><tr><th>Savol</th><th>Javob</th><th>Narxdan chegirma, % (= ball)</th></tr></thead><tbody>
     ${Object.entries(s.pts).map(([k, arr]) => arr.map((o, i) => `<tr><td>${i === 0 ? PT_NAME[k] || k : ""}</td><td>${esc(o.label)}</td><td>${num(`pts.${k}.${i}.p`, o.p)}</td></tr>`).join("")).join("")}
   </tbody></table></div></div>
+  <div class="panel"><h3 style="margin-top:0">Ariza qabul qilinadigan hududlar</h3><p class="sub">Mijoz joylashuvi (GPS) bo'yicha tekshiriladi. Belgilanmagan hududdagi mijozga "Bu hududda hozircha do'konimiz yo'q" chiqadi va ariza qoldira olmaydi.</p>
+    <div style="display:flex;gap:18px;flex-wrap:wrap">${ARZ_REGIONS.map(r => `<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" data-reg="${esc(r)}" ${(s.regions?.length ? s.regions : ARZ_REGIONS).includes(r) ? "checked" : ""} style="width:20px;height:20px"> ${esc(r)}</label>`).join("")}</div></div>
   <div class="panel"><h3 style="margin-top:0">Sennik (Xprinter)</h3><p class="sub">Etiketka o'lchami, mm. Chop etilgan sennik etiketkaga sig'masa yoki siljisa — shu raqamlarni etiketkangiz o'lchamiga moslang.</p>
     <div class="row"><div class="field"><label>Eni, mm</label><input class="inp" id="tgW" type="number" min="20" max="150" value="${esc(s.tag?.w || 58)}" style="max-width:140px"></div>
     <div class="field"><label>Bo'yi, mm</label><input class="inp" id="tgH" type="number" min="15" max="150" value="${esc(s.tag?.h || 40)}" style="max-width:140px"></div>
@@ -1828,6 +1832,8 @@ function renderSettings() {
     if (!(s.kurs > 0)) return toast("Kursni kiriting", true);
     if (!(s.sellKurs > 0)) return toast("Sotuv kursini kiriting", true);
     s.contract = {months: $("#ctMonths").value.trim(), extra: $("#ctExtra").value.trim()};
+    s.regions = [...document.querySelectorAll("[data-reg]")].filter(c => c.checked).map(c => c.dataset.reg);
+    if (!s.regions.length) return toast("Kamida bitta hududni belgilang", true);
     s.tag = {w: +$("#tgW").value || 58, h: +$("#tgH").value || 40, design: 1};
     try { await setDoc(doc(db, "settings", "main"), s); S.settings = s; toast("Sozlamalar saqlandi"); renderSettings(); } catch (e) { toast(errText(e), true); }
   };

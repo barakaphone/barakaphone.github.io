@@ -317,7 +317,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.28-1";
+const APP_VERSION = "2026.10.28-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -528,6 +528,12 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
+  "Eslatma: xaridni faqat {l} hududlarida amalga oshirishingiz mumkin.": "Обратите внимание: покупку можно оформить только в регионах: {l}.",
+  "Joylashuvingiz aniqlanmoqda… Telefon so'rasa, \"Ruxsat berish\" ni bosing.": "Определяем ваше местоположение… Если телефон спросит, нажмите «Разрешить».",
+  "Ariza qoldirish uchun joylashuvingizga ruxsat bering. Brauzer sozlamalarida shu sayt uchun \"Joylashuv\" ni yoqing.": "Чтобы оставить заявку, разрешите доступ к местоположению. Включите «Геолокацию» для этого сайта в настройках браузера.",
+  "Joylashuvni aniqlab bo'lmadi. Telefoningizda joylashuv (GPS) yoqilganini tekshiring.": "Не удалось определить местоположение. Проверьте, что геолокация (GPS) включена.",
+  "Qayta urinish": "Повторить", "Bu hududda hozircha do'konimiz yo'q.": "В этом регионе пока нет нашего магазина.",
+  "Ariza faqat quyidagi hududlardan qabul qilinadi: {l}.": "Заявки принимаются только из регионов: {l}.", "Hududingiz": "Ваш регион",
   "Murojaat qoldirgandan so'ng 15 daqiqa ichida qo'ng'iroq bo'lmasa, iltimos, admin bilan bog'laning.": "Если в течение 15 минут после заявки вам не позвонили, пожалуйста, свяжитесь с администратором.",
   "SIM karta turi qanday?": "Какой тип SIM?", "SIM + eSIM": "SIM + eSIM", "eSIM + eSIM (SIM joyi yo'q)": "eSIM + eSIM (нет слота SIM)",
   "Sozlamalar → Umumiy → Ushbu qurilma haqida: \"Jismoniy SIM\" qatori bo'lsa — SIM + eSIM.": "Настройки → Основные → Об этом устройстве: если есть строка «Физическая SIM» — SIM + eSIM.",
@@ -700,7 +706,7 @@ window.PHONE_SVG = PHONE_SVG;
 function canNext() {
   if (W.step === 0) return W.q === SUMMARY && !!clientCalc();
   if (W.step === 1) return !!ourStock();
-  if (W.step === 3) return !W.saving;
+  if (W.step === 3) return !W.saving && geoOk();
   return true;
 }
 const stepList = () => W.buy ? [2, 3] : W.sell ? [0, 3] : W.pre ? [0, 2, 3] : [0, 1, 2, 3];
@@ -754,6 +760,7 @@ function renderWizard() {
   el.innerHTML = h;
   if (W.step === 0 && QS[W.q]?.k === "model") renderModelList();
   if (W.step === 1) { renderStockGrid(); renderCompare(); }
+  if (W.step === 3 && !GEO) detectRegion();
   renderAction();
 }
 // Vitrinadan telefon tanlanganda: muddatli to'lovga olish yoki trade-in
@@ -828,6 +835,31 @@ function planHtml(diff) {
 }
 // Mijoz qaysi hududdan — arizada "Hudud: ..." bo'lib ko'rinadi
 const REGIONS = ["Toshkent", "Andijon", "Farg'ona", "Qo'qon"];
+// Hudud mijoz joylashuvi (GPS) bo'yicha aniqlanadi: shahar markazidan radius ichida bo'lsa — o'sha hudud.
+// Koordinata faqat telefonda hisoblanadi, bazaga faqat hudud nomi yoziladi. Admin Sozlamalarda qaysi hududlardan ariza qabul qilinishini belgilaydi.
+const REGION_GEO = {"Toshkent": [41.311, 69.279, 40], "Andijon": [40.783, 72.344, 30], "Farg'ona": [40.389, 71.783, 30], "Qo'qon": [40.528, 70.943, 25]};
+const allowedRegions = () => (S.settings.regions?.length ? S.settings.regions : REGIONS).filter(r => REGIONS.includes(r));
+let GEO = null; // null | "wait" | "denied" | "error" | {region, ok}
+const kmTo = (la1, lo1, la2, lo2) => { const R = 6371, d = Math.PI / 180, a = Math.sin((la2 - la1) * d / 2) ** 2 + Math.cos(la1 * d) * Math.cos(la2 * d) * Math.sin((lo2 - lo1) * d / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(a)); };
+function detectRegion() {
+  if (GEO === "wait") return;
+  if (!navigator.geolocation) { GEO = "error"; return updGeo(); }
+  GEO = "wait"; updGeo();
+  navigator.geolocation.getCurrentPosition(pos => {
+    const {latitude: la, longitude: lo} = pos.coords;
+    const hit = Object.entries(REGION_GEO).map(([r, [a, b, km]]) => [r, kmTo(la, lo, a, b), km]).filter(([, d, km]) => d <= km).sort((x, y) => x[1] - y[1])[0];
+    GEO = {region: hit ? hit[0] : "", ok: !!hit && allowedRegions().includes(hit[0])}; updGeo();
+  }, e => { GEO = e.code === 1 ? "denied" : "error"; updGeo(); }, {enableHighAccuracy: false, timeout: 20000, maximumAge: 600000});
+}
+const geoOk = () => GEO && typeof GEO === "object" && GEO.ok;
+function geoHtml() {
+  const list = allowedRegions().join(", ");
+  if (!GEO || GEO === "wait") return `<div class="note">📍 ${t("Joylashuvingiz aniqlanmoqda… Telefon so'rasa, \"Ruxsat berish\" ni bosing.")}</div>`;
+  if (GEO === "denied" || GEO === "error") return `<div class="err" style="display:block">📍 ${t(GEO === "denied" ? "Ariza qoldirish uchun joylashuvingizga ruxsat bering. Brauzer sozlamalarida shu sayt uchun \"Joylashuv\" ni yoqing." : "Joylashuvni aniqlab bo'lmadi. Telefoningizda joylashuv (GPS) yoqilganini tekshiring.")}</div><button class="btn sec block" data-act="geoRetry" style="margin-bottom:12px">↻ ${t("Qayta urinish")}</button>`;
+  if (!GEO.ok) return `<div class="err" style="display:block">📍 ${t("Bu hududda hozircha do'konimiz yo'q.")}${GEO.region ? " (" + esc(GEO.region) + ")" : ""}<br>${t("Ariza faqat quyidagi hududlardan qabul qilinadi: {l}.", {l: list})}</div>`;
+  return `<div class="note" style="color:var(--ok)">📍 ${t("Hududingiz")}: <b>${esc(GEO.region)}</b> ✓</div>`;
+}
+function updGeo() { const el = $("#geoBox"); if (el) el.innerHTML = geoHtml(); refreshNext(); }
 function formHtml() {
   const s = ourStock(), c = clientCalc(), diff = diffUzs(), p = needPlan() ? plan(diff, W.months) : null;
   const top = W.buy
@@ -849,8 +881,8 @@ function formHtml() {
   <h3>${t("Bog'lanish uchun")}</h3>
   <div class="field"><label for="fName">${t("Ismingiz *")}</label><input class="inp" id="fName" autocomplete="name" maxlength="60" value="${esc(W.name)}"></div>
   <div class="field"><label for="fPhone">${t("Telefon raqamingiz *")}</label><div class="phin"><span>+998</span><input class="inp" id="fPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(90) 123-45-67" value="${esc(fmt9(W.phone))}"></div></div>
-  <div class="warn" style="margin:0 0 12px">ℹ️ ${t("Eslatma: xaridni faqat Andijon, Toshkent, Qo'qon va Farg'ona hududlarida amalga oshirishingiz mumkin.")}</div>
-  <div class="field"><label for="fReg">${t("Hududingiz *")}</label><select class="inp" id="fReg"><option value="">${t("— hududni tanlang —")}</option>${REGIONS.map(r => `<option ${W.region === r ? "selected" : ""}>${esc(r)}</option>`).join("")}</select></div>
+  <div class="warn" style="margin:0 0 12px">ℹ️ ${t("Eslatma: xaridni faqat {l} hududlarida amalga oshirishingiz mumkin.", {l: allowedRegions().join(", ")})}</div>
+  <div id="geoBox">${geoHtml()}</div>
   <div id="saveErr" class="err hidden"></div>`;
 }
 function renderAction() {
@@ -885,11 +917,11 @@ async function saveAriza() {
   // Telefon avtomatik to'ldirgan qiymat "input" hodisasisiz ham bo'lishi mumkin — maydonning o'zidan o'qiymiz
   if ($("#fName")) W.name = $("#fName").value;
   if ($("#fPhone")) { let d = digits($("#fPhone").value); if (d.length > 9 && d.startsWith("998")) d = d.slice(3); W.phone = d.slice(0, 9); }
-  W.name = W.name.trim(); W.region = $("#fReg")?.value || ""; W.city = ($("#fCity")?.value || "").trim().slice(0, 40);
-  W.note = W.region ? `Hudud: ${W.region}${W.city ? ", " + W.city : ""}` : "";
+  W.name = W.name.trim(); W.region = geoOk() ? GEO.region : "";
+  W.note = W.region ? `Hudud: ${W.region}, joylashuv bo'yicha` : "";
   if (W.name.length < 2) return fail(t("Ismingizni yozing"));
   if (!phoneOk()) { $("#fPhone")?.classList.add("err"); return fail(t("Telefon raqamini to'liq yozing: kod va 7 ta raqam")); }
-  if (!W.region) { $("#fReg")?.classList.add("err"); return fail(t("Hududingizni tanlang")); }
+  if (!W.region) return fail(t("Bu hududda hozircha do'konimiz yo'q."));
   const c = clientCalc(), m = curModel(), st = ourStock();
   if (W.buy) return saveBuy(st);
   if (!c) return;
@@ -961,6 +993,7 @@ document.addEventListener("click", e => {
   if (a === "prev" && W.buy && W.step === 2) { Object.assign(W, {buy: false, pick: true}); renderWizard(); return goTop(); }
   if (a === "prev") { W.step = prevStep(W.step); renderWizard(); return goTop(); }
   if (a === "next" && canNext()) { if (W.step === 3) return saveAriza(); W.step = nextStep(W.step); renderWizard(); return goTop(); }
+  if (a === "geoRetry") { GEO = null; return detectRegion(); }
   if (a === "new") { W = freshW(); renderWizard(); return goTop(); }
   if (b.dataset.stock) {
     // Vitrinada tanlansa — avval "Muddatli to'lov yoki Trade-in" tanlovi chiqadi
