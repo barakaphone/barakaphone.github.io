@@ -235,7 +235,7 @@ em{font-style:normal;font-weight:800}
         <button data-wa style="${btn("#25D366")}">WhatsApp</button>
         <button data-dlall style="${btn("#00297D")}">⬇ Rasmlarni yuklab olish${real.length ? ` (${real.length + 1})` : ""}</button>
         <button data-copy style="${btn("#555")}">📋 Matnni nusxalash</button></div>
-      <div data-hint style="display:none;background:#FFF6DB;border:1px solid #F1D08A;color:#7a5200;border-radius:10px;padding:10px;margin-top:10px;font-weight:700">✅ Rasm nusxalandi. Ochilgan Telegram/WhatsApp oynasida chatni tanlang va <u>Ctrl+V</u> bosing — rasm matn bilan birga qo'shiladi.</div>
+      <div data-hint style="display:none;background:#FFF6DB;border:1px solid #F1D08A;color:#7a5200;border-radius:10px;padding:10px;margin-top:10px;font-weight:700">✅ Rasm nusxalandi.<br>1) Telegram'da chatni tanlang — matn xabar maydoniga tushadi. <u>Hali yubormang!</u><br>2) <u>Ctrl+V</u> bosing — rasm oynasi ochiladi, matn izohga o'tadi.<br>3) "Yuborish" ni bosing.</div>
       <p style="font-size:13px;color:#666;margin:10px 0 0">Instagram uchun: rasmni yuklab oling va Instagram'da post qiling, matnni nusxalab izohga qo'ying. Telefonda "Jo'natish" bosilsa, Instagram ro'yxatda o'zi chiqadi.</p>
       <button data-close style="${btn("#eee", "#222")};margin-top:12px;width:100%">Yopish</button></div>`;
     document.body.appendChild(box);
