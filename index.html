@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.28-2"></script>
+<script src="shartnoma.js?v=2026.10.29-1"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.28-2";
+const APP_VERSION = "2026.10.29-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -646,7 +646,7 @@ function renderStock() {
     <td class="n">${sold ? usd(s.sellUsd) : `<input class="inp sm" type="number" step="1" data-sell="${s.id}" value="${s.sellUsd}">`}<div class="src">${uzs(sellUzs(s.sellUsd))}</div></td>
     <td class="n"><b style="color:${pr >= 0 ? "var(--ok)" : "var(--bad)"}">${uzs(pr)}</b></td>
     <td>${sold ? `<span class="badge grey">Sotilgan</span>` : `<select class="inp" style="min-height:36px;padding:6px 8px;min-width:140px" data-status="${s.id}">${["sotuvda", "tayyorlanmoqda"].map(k => `<option value="${k}" ${s.status === k ? "selected" : ""}>${ST_LABEL[k]}</option>`).join("")}<option value="offline">Oflayn do'kondan sotildi</option></select>`}</td>
-    <td style="white-space:nowrap">${sold ? (isOwner() ? `<button class="btn bad sm" data-delsold="${s.id}">O'chirish</button>` : "") : `<button class="btn gold sm" data-tag="${s.id}">🏷 Sennik</button> <button class="btn sec sm" data-sedit="${s.id}">Tahrirlash</button> <button class="btn sec sm" data-move="${s.id}">Ko'chirish</button> <button class="btn bad sm" data-delstock="${s.id}">O'chirish</button>`}</td></tr>`}).join("")}
+    <td style="white-space:nowrap">${sold ? (isOwner() ? `<button class="btn bad sm" data-delsold="${s.id}">O'chirish</button>` : "") : `<button class="btn gold sm" data-tag="${s.id}">🏷 Sennik</button> ${s.status === "sotuvda" ? `<button class="btn sec sm" data-share="${s.id}">📤 Jo'natish</button> ` : ""}<button class="btn sec sm" data-sedit="${s.id}">Tahrirlash</button> <button class="btn sec sm" data-move="${s.id}">Ko'chirish</button> <button class="btn bad sm" data-delstock="${s.id}">O'chirish</button>`}</td></tr>`}).join("")}
   </tbody></table></div>` : `<div class="panel empty">Bu bo'limda telefon yo'q.</div>`}`;
   document.querySelectorAll("[data-sf]").forEach(b => b.onclick = () => { S.stockFilter = b.dataset.sf; renderStock(); });
   $("#addStock").onclick = stockModal;
@@ -749,6 +749,15 @@ function moveModal(s) {
   };
 }
 // Oflayn do'kondan (saytdan tashqari) sotilgan telefon: sotilgan narx bilan "Sotilgan" bo'ladi
+// Ijtimoiy tarmoqlarga jo'natish: rasm-kartochka va matn (Shartnoma.share)
+const shareData = s => ({model: s.modelName, mem: s.mem, color: s.color ? colorUz(s.color) : "", colorEn: s.color, cond: s.cond === "yangi" ? "Yangi" : "B/U",
+  grade: S.settings?.grades?.["ABCD".indexOf(s.grade)]?.label || "", batt: s.battery || "", cyc: s.cyc ?? "", box: s.box === "yes" ? "bor" : s.box === "no" ? "yo'q" : "",
+  region: s.region || "", price: sellUzs(s.sellUsd), img: S.models?.find(m => m.name === s.modelName)?.img || ""});
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-share]"); if (!b) return;
+  const s = (S.stockAll || S.stock).find(x => x.id === b.dataset.share) || S.stock.find(x => x.id === b.dataset.share); if (!s) return;
+  b.disabled = true; try { await Shartnoma.share(shareData(s)); } catch (er) { toast("Jo'natib bo'lmadi: " + (er.message || er), true); } b.disabled = false;
+});
 function offlineSoldModal(s) {
   modal(`<h2>Oflayn do'kondan sotildi</h2><p class="sub">${esc(s.modelName)} ${esc(s.mem || "")}${s.color ? ", " + esc(colorUz(s.color)) : ""} · ${esc(bName(s.branchId))}</p>
     <div class="field"><label>Sotilgan narx, so'm</label><input class="inp" id="ofPrice" inputmode="numeric" value="${sum(sellUzs(s.sellUsd))}"></div>

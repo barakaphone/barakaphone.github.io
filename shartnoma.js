@@ -187,5 +187,57 @@ em{font-style:normal;font-weight:800}
   const IG = '<svg viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="19" height="19" rx="5" fill="#000"/><circle cx="12" cy="12" r="4.3" fill="none" stroke="#fff" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.2" fill="#fff"/></svg>';
   const PH = '<svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" fill="#000"/></svg>';
 
-  window.Shartnoma = {buyHtml, sellHtml, open, words, backCoverUsd, tagHtml, TAG_DESIGNS, REQ_PRESETS, REQ_FIELDS};
+
+  /* ---- Ombordagi telefonni ijtimoiy tarmoqlarga jo'natish: rasm-kartochka (1080×1350) + matn ----
+     Telefonda tizimning "Ulashish" oynasi ochiladi (Telegram, Instagram, WhatsApp...). Kompyuterda — Telegram/WhatsApp havolalari, rasmni yuklab olish. */
+  const SHARE_SITE = "https://barakaphone.github.io/mijoz.html";
+  const SHARE_PHONES = [["Malika", "+998 91 154 99 44"], ["Anora", "+998 90 057 39 15"]];
+  const slug = n => String(n || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").replace(/^iphone-17-air$/, "iphone-air");
+  const loadImg = src => new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+  const shareText = d => [`📱 ${d.model} ${d.mem || ""}`.trim(), d.color ? `🎨 Rangi: ${d.color}` : "", d.cond ? `✅ Holati: ${d.cond}${d.grade ? ", " + d.grade : ""}` : "",
+    d.batt ? `🔋 Batareya: ${d.batt}%${d.cyc ? " · " + d.cyc + " sikl" : ""}` : "", d.box ? `📦 Qutisi: ${d.box}` : "", d.region ? `🌍 Region: ${d.region}` : "",
+    `💰 Narxi: ${som(d.price)} so'm`, "", ...SHARE_PHONES.map(([n, t]) => `📞 ${t} (${n})`), `🌐 ${SHARE_SITE}`, "@barakasavdorasmiy"].filter((x, i) => x || i).join("\n");
+  async function shareCard(d) {
+    const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.fillStyle = "#00297D"; g.fillRect(0, 0, W, 150); g.fillStyle = "#F2B705"; g.fillRect(0, 150, W, 10);
+    const logo = await loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(logoSvg("#fff", "#00297D", false).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" width="330" height="80" ')));
+    if (logo) g.drawImage(logo, 50, 35, 330, 80);
+    g.fillStyle = "#fff"; g.font = "bold 34px Arial"; g.textAlign = "right"; g.fillText(d.cond || "", W - 50, 90); g.textAlign = "left";
+    const ms = slug(d.model), cs = String(d.colorEn || "").toLowerCase().replace(/\(product\)/g, "product").replace(/[^a-z0-9]/g, "");
+    const ph = (cs && await loadImg(`img/iphone/${ms}/${cs}.jpg`)) || await loadImg(d.img || `img/iphone/${ms}.jpg`);
+    if (ph) { const box = 620, k = Math.min(box / ph.width, box / ph.height), w = ph.width * k, h = ph.height * k; g.drawImage(ph, (W - w) / 2, 190 + (box - h) / 2, w, h); }
+    let y = 880; g.fillStyle = "#0b1220"; g.font = "bold 64px Arial"; g.fillText(`${d.model} ${d.mem || ""}`.trim(), 60, y);
+    g.font = "36px Arial"; g.fillStyle = "#3a4458"; y += 60;
+    for (const t of [d.color && "Rangi: " + d.color, [d.grade, d.batt && `batareya ${d.batt}%${d.cyc ? ", " + d.cyc + " sikl" : ""}`].filter(Boolean).join(" · "), [d.box && "Qutisi: " + d.box, d.region && "Region: " + d.region].filter(Boolean).join(" · ")].filter(Boolean)) { g.fillText(t, 60, y); y += 50; }
+    g.fillStyle = "#00297D"; g.beginPath(); g.roundRect ? g.roundRect(60, 1110, W - 120, 120, 24) : g.rect(60, 1110, W - 120, 120); g.fill();
+    g.fillStyle = "#F2B705"; g.font = "bold 72px Arial"; g.textAlign = "center"; g.fillText(`${som(d.price)} so'm`, W / 2, 1195);
+    g.fillStyle = "#3a4458"; g.font = "30px Arial"; g.fillText(SHARE_PHONES.map(([n, t]) => `${t} (${n})`).join("   ·   "), W / 2, 1290); g.textAlign = "left";
+    return new Promise(res => cv.toBlob(b => res(b), "image/jpeg", 0.9));
+  }
+  async function share(d) {
+    const text = shareText(d), blob = await shareCard(d), name = `${slug(d.model)}-${String(d.mem || "").replace(/\s/g, "")}.jpg`;
+    const file = new File([blob], name, {type: "image/jpeg"});
+    if (navigator.canShare && navigator.canShare({files: [file]})) {
+      try { await navigator.share({files: [file], text, title: `${d.model} ${d.mem || ""}`}); return; } catch (e) { if (e.name === "AbortError") return; }
+    }
+    // Kompyuter yoki rasm ulashib bo'lmaydigan brauzer: oyna
+    const url = URL.createObjectURL(blob), enc = encodeURIComponent, box = document.createElement("div");
+    box.style.cssText = "position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+    box.innerHTML = `<div style="background:#fff;border-radius:16px;max-width:460px;width:100%;max-height:92vh;overflow:auto;padding:18px;font-family:Arial,sans-serif">
+      <h3 style="margin:0 0 10px;color:#00297D">Jo'natish</h3><img src="${url}" style="width:100%;border-radius:10px;border:1px solid #ddd">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+        <a target="_blank" rel="noopener" href="https://t.me/share/url?url=${enc(SHARE_SITE)}&text=${enc(text)}" style="${btn("#229ED9")}">Telegram</a>
+        <a target="_blank" rel="noopener" href="https://wa.me/?text=${enc(text)}" style="${btn("#25D366")}">WhatsApp</a>
+        <a download="${name}" href="${url}" style="${btn("#00297D")}">⬇ Rasmni yuklab olish</a>
+        <button data-copy style="${btn("#555")}">📋 Matnni nusxalash</button></div>
+      <p style="font-size:13px;color:#666;margin:10px 0 0">Instagram uchun: rasmni yuklab oling va Instagram'da post qiling, matnni nusxalab izohga qo'ying. Telefonda "Jo'natish" bosilsa, Instagram ro'yxatda o'zi chiqadi.</p>
+      <button data-close style="${btn("#eee", "#222")};margin-top:12px;width:100%">Yopish</button></div>`;
+    document.body.appendChild(box);
+    box.onclick = async e => {
+      if (e.target === box || e.target.closest("[data-close]")) { box.remove(); URL.revokeObjectURL(url); }
+      if (e.target.closest("[data-copy]")) { try { await navigator.clipboard.writeText(text); e.target.textContent = "✓ Nusxalandi"; } catch { prompt("Matnni nusxalang:", text); } }
+    };
+  }
+  const btn = (bg, fg = "#fff") => `display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:10px;background:${bg};color:${fg};text-decoration:none;font-weight:700;border:0;font-size:15px;cursor:pointer;padding:0 10px;text-align:center`;
+  window.Shartnoma = {buyHtml, sellHtml, open, words, backCoverUsd, tagHtml, TAG_DESIGNS, REQ_PRESETS, REQ_FIELDS, share};
 })();

@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.28-2"></script>
+<script src="shartnoma.js?v=2026.10.29-1"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.28-2";
+const APP_VERSION = "2026.10.29-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -877,13 +877,22 @@ function renderStock() {
   <input class="inp" id="stockQ" placeholder="Qidirish: model yoki rang" value="${esc(S.stockQ)}" style="margin-bottom:12px">
   <div id="stockList">${stockListHtml(stockItems())}</div>`;
 }
+// Ijtimoiy tarmoqlarga jo'natish: rasm-kartochka va matn (Shartnoma.share)
+const shareData = s => ({model: s.modelName, mem: s.mem, color: s.color ? colorUz(s.color) : "", colorEn: s.color, cond: s.cond === "yangi" ? "Yangi" : "B/U",
+  grade: S.settings?.grades?.["ABCD".indexOf(s.grade)]?.label || "", batt: s.battery || "", cyc: s.cyc ?? "", box: s.box === "yes" ? "bor" : s.box === "no" ? "yo'q" : "",
+  region: s.region || "", price: sellUzs(s.sellUsd), img: S.models?.find(m => m.name === s.modelName)?.img || ""});
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-share]"); if (!b) return;
+  const s = (S.stockAll || S.stock).find(x => x.id === b.dataset.share) || S.stock.find(x => x.id === b.dataset.share); if (!s) return;
+  b.disabled = true; try { await Shartnoma.share(shareData(s)); } catch (er) { toast("Jo'natib bo'lmadi: " + (er.message || er), true); } b.disabled = false;
+});
 function stockListHtml(items) {
   return items.length ? items.map(s => `<div class="item"><div><b>${esc(s.modelName)}</b> <span class="badge ${s.cond === "yangi" ? "ok" : "grey"}">${s.cond === "yangi" ? "Yangi" : "B/U"}</span> <span class="badge ${esc(s.grade)}">${esc(s.grade)}</span>
     <div class="src">${esc(s.mem || "")}${s.color ? ", " + esc(colorUz(s.color)) : ""}${s.battery ? ", batareya " + s.battery + "%" : ""}</div>
     <div class="src">${s.other ? "Boshqa filial" : `Tannarx: ${uzs(toUzs(s.buyUsd))}`}${s.status === "sotilgan" && s.sold ? ` · Sotildi ${fdt(s.sold.at)}, ${esc(s.sold.clientName || "")}` : ""}</div>
     ${s.branchId !== S.me.branchId ? `<div><span class="badge gold">${esc(bName(s.branchId))}</span></div>` : ""}</div>
     <div style="text-align:right"><div class="p">${uzs(s.status === "sotilgan" && s.sold?.priceUzs ? s.sold.priceUzs : sellUzs(s.sellUsd))}</div>
-    ${s.branchId !== S.me.branchId ? `<span class="src">Admin orqali ko'chiriladi</span>` : s.status === "sotuvda" ? `<button class="btn pri sm" style="margin-top:6px" data-sell="${s.id}">Sotish</button> <button class="btn sec sm" style="margin-top:6px" data-tag="${s.id}">🏷 Sennik</button>` : s.status === "tayyorlanmoqda" ? `<span class="badge grey">Tayyorlanmoqda</span> <button class="btn sec sm" data-tag="${s.id}">🏷 Sennik</button>` : `<span class="badge grey">Sotilgan</span>`}</div></div>`).join("") : `<div class="empty">Bu bo'limda telefon yo'q.</div>`;
+    ${s.status === "sotuvda" ? `<button class="btn sec sm" style="margin-top:6px" data-share="${s.id}">📤 Jo'natish</button> ` : ""}${s.branchId !== S.me.branchId ? `<span class="src">Admin orqali ko'chiriladi</span>` : s.status === "sotuvda" ? `<button class="btn pri sm" style="margin-top:6px" data-sell="${s.id}">Sotish</button> <button class="btn sec sm" style="margin-top:6px" data-tag="${s.id}">🏷 Sennik</button>` : s.status === "tayyorlanmoqda" ? `<span class="badge grey">Tayyorlanmoqda</span> <button class="btn sec sm" data-tag="${s.id}">🏷 Sennik</button>` : `<span class="badge grey">Sotilgan</span>`}</div></div>`).join("") : `<div class="empty">Bu bo'limda telefon yo'q.</div>`;
 }
 let SALE = null;
 function openSale(id) {
