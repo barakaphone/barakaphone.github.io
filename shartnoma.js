@@ -217,24 +217,29 @@ em{font-style:normal;font-weight:800}
   async function share(d) {
     const text = shareText(d), blob = await shareCard(d), name = `${slug(d.model)}-${String(d.mem || "").replace(/\s/g, "")}.jpg`;
     const file = new File([blob], name, {type: "image/jpeg"});
-    if (navigator.canShare && navigator.canShare({files: [file]})) {
-      try { await navigator.share({files: [file], text, title: `${d.model} ${d.mem || ""}`}); return; } catch (e) { if (e.name === "AbortError") return; }
+    // Telefonning o'zining (haqiqiy) rasmlari — kartochkadan keyin
+    const real = await Promise.all((d.photos || []).map(async (u, i) => new File([await (await fetch(u)).blob()], name.replace(".jpg", `-${i + 1}.jpg`), {type: "image/jpeg"})));
+    const files = [file, ...real];
+    if (navigator.canShare && navigator.canShare({files})) {
+      try { await navigator.share({files, text, title: `${d.model} ${d.mem || ""}`}); return; } catch (e) { if (e.name === "AbortError") return; }
     }
     // Kompyuter yoki rasm ulashib bo'lmaydigan brauzer: oyna
     const url = URL.createObjectURL(blob), enc = encodeURIComponent, box = document.createElement("div");
     box.style.cssText = "position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
     box.innerHTML = `<div style="background:#fff;border-radius:16px;max-width:460px;width:100%;max-height:92vh;overflow:auto;padding:18px;font-family:Arial,sans-serif">
       <h3 style="margin:0 0 10px;color:#00297D">Jo'natish</h3><img src="${url}" style="width:100%;border-radius:10px;border:1px solid #ddd">
+      ${real.length ? `<div style="font-weight:700;margin:10px 0 6px">Telefonning o'z rasmlari (${real.length})</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${(d.photos || []).map((u, i) => `<a download="${name.replace(".jpg", `-${i + 1}.jpg`)}" href="${u}"><img src="${u}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid #ddd"></a>`).join("")}</div>` : ""}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
         <a target="_blank" rel="noopener" href="https://t.me/share/url?url=${enc(SHARE_SITE)}&text=${enc(text)}" style="${btn("#229ED9")}">Telegram</a>
         <a target="_blank" rel="noopener" href="https://wa.me/?text=${enc(text)}" style="${btn("#25D366")}">WhatsApp</a>
-        <a download="${name}" href="${url}" style="${btn("#00297D")}">⬇ Rasmni yuklab olish</a>
+        <button data-dlall style="${btn("#00297D")}">⬇ Rasmlarni yuklab olish${real.length ? ` (${real.length + 1})` : ""}</button>
         <button data-copy style="${btn("#555")}">📋 Matnni nusxalash</button></div>
       <p style="font-size:13px;color:#666;margin:10px 0 0">Instagram uchun: rasmni yuklab oling va Instagram'da post qiling, matnni nusxalab izohga qo'ying. Telefonda "Jo'natish" bosilsa, Instagram ro'yxatda o'zi chiqadi.</p>
       <button data-close style="${btn("#eee", "#222")};margin-top:12px;width:100%">Yopish</button></div>`;
     document.body.appendChild(box);
     box.onclick = async e => {
       if (e.target === box || e.target.closest("[data-close]")) { box.remove(); URL.revokeObjectURL(url); }
+      if (e.target.closest("[data-dlall]")) [[url, name], ...(d.photos || []).map((u, i) => [u, name.replace(".jpg", `-${i + 1}.jpg`)])].forEach(([h, n], i) => setTimeout(() => { const a = document.createElement("a"); a.href = h; a.download = n; document.body.appendChild(a); a.click(); a.remove(); }, i * 400));
       if (e.target.closest("[data-copy]")) { try { await navigator.clipboard.writeText(text); e.target.textContent = "✓ Nusxalandi"; } catch { prompt("Matnni nusxalang:", text); } }
     };
   }

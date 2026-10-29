@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.29-1"></script>
+<script src="shartnoma.js?v=2026.10.29-2"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.29-1";
+const APP_VERSION = "2026.10.29-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -877,6 +877,18 @@ function renderStock() {
   <input class="inp" id="stockQ" placeholder="Qidirish: model yoki rang" value="${esc(S.stockQ)}" style="margin-bottom:12px">
   <div id="stockList">${stockListHtml(stockItems())}</div>`;
 }
+// Telefonning o'z rasmlari (sotib olinganda yoki trade-in'da olingan): faqat old va orqa tomoni jo'natiladi
+async function stockPhotos(s) {
+  const arz = s.sourceArizaId || (s.sourceDealId && S.deals.find(d => d.id === s.sourceDealId)?.arizaId), qs = [];
+  if (s.sourceDealId) qs.push(getDocs(query(collection(db, "photos"), where("dealId", "==", s.sourceDealId))));
+  if (arz) qs.push(getDocs(query(collection(db, "photos"), where("arizaId", "==", arz))));
+  try {
+    const all = (await Promise.all(qs)).flatMap(sn => sn.docs.map(d => d.data()));
+    // Faqat old va orqa tomoni (har biridan bittadan)
+    const pick = re => all.find(p => p.data && re.test(p.label || ""));
+    return [pick(/^old/i), pick(/^orqa/i)].filter(Boolean).map(p => p.data);
+  } catch { return []; }
+}
 // Ijtimoiy tarmoqlarga jo'natish: rasm-kartochka va matn (Shartnoma.share)
 const shareData = s => ({model: s.modelName, mem: s.mem, color: s.color ? colorUz(s.color) : "", colorEn: s.color, cond: s.cond === "yangi" ? "Yangi" : "B/U",
   grade: S.settings?.grades?.["ABCD".indexOf(s.grade)]?.label || "", batt: s.battery || "", cyc: s.cyc ?? "", box: s.box === "yes" ? "bor" : s.box === "no" ? "yo'q" : "",
@@ -884,7 +896,8 @@ const shareData = s => ({model: s.modelName, mem: s.mem, color: s.color ? colorU
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-share]"); if (!b) return;
   const s = (S.stockAll || S.stock).find(x => x.id === b.dataset.share) || S.stock.find(x => x.id === b.dataset.share); if (!s) return;
-  b.disabled = true; try { await Shartnoma.share(shareData(s)); } catch (er) { toast("Jo'natib bo'lmadi: " + (er.message || er), true); } b.disabled = false;
+  b.disabled = true; const t0 = b.textContent; b.textContent = "⏳";
+  try { await Shartnoma.share({...shareData(s), photos: await stockPhotos(s)}); } catch (er) { toast("Jo'natib bo'lmadi: " + (er.message || er), true); } b.disabled = false; b.textContent = t0;
 });
 function stockListHtml(items) {
   return items.length ? items.map(s => `<div class="item"><div><b>${esc(s.modelName)}</b> <span class="badge ${s.cond === "yangi" ? "ok" : "grey"}">${s.cond === "yangi" ? "Yangi" : "B/U"}</span> <span class="badge ${esc(s.grade)}">${esc(s.grade)}</span>
