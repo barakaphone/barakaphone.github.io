@@ -212,6 +212,7 @@ em{font-style:normal;font-weight:800}
     g.fillStyle = "#00297D"; g.beginPath(); g.roundRect ? g.roundRect(60, 1110, W - 120, 120, 24) : g.rect(60, 1110, W - 120, 120); g.fill();
     g.fillStyle = "#F2B705"; g.font = "bold 72px Arial"; g.textAlign = "center"; g.fillText(`${som(d.price)} so'm`, W / 2, 1195);
     g.fillStyle = "#3a4458"; g.font = "30px Arial"; g.fillText(SHARE_PHONES.map(([n, t]) => `${t} (${n})`).join("   ·   "), W / 2, 1290); g.textAlign = "left";
+    shareCard.png = () => new Promise(res => cv.toBlob(b => res(b), "image/png"));
     return new Promise(res => cv.toBlob(b => res(b), "image/jpeg", 0.9));
   }
   async function share(d) {
@@ -230,15 +231,22 @@ em{font-style:normal;font-weight:800}
       <h3 style="margin:0 0 10px;color:#00297D">Jo'natish</h3><img src="${url}" style="width:100%;border-radius:10px;border:1px solid #ddd">
       ${real.length ? `<div style="font-weight:700;margin:10px 0 6px">Telefonning o'z rasmlari (${real.length})</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${(d.photos || []).map((u, i) => `<a download="${name.replace(".jpg", `-${i + 1}.jpg`)}" href="${u}"><img src="${u}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid #ddd"></a>`).join("")}</div>` : ""}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
-        <a target="_blank" rel="noopener" href="https://t.me/share/url?url=${enc(SHARE_SITE)}&text=${enc(text)}" style="${btn("#229ED9")}">Telegram</a>
-        <a target="_blank" rel="noopener" href="https://wa.me/?text=${enc(text)}" style="${btn("#25D366")}">WhatsApp</a>
+        <button data-tg style="${btn("#229ED9")}">Telegram</button>
+        <button data-wa style="${btn("#25D366")}">WhatsApp</button>
         <button data-dlall style="${btn("#00297D")}">⬇ Rasmlarni yuklab olish${real.length ? ` (${real.length + 1})` : ""}</button>
         <button data-copy style="${btn("#555")}">📋 Matnni nusxalash</button></div>
+      <div data-hint style="display:none;background:#FFF6DB;border:1px solid #F1D08A;color:#7a5200;border-radius:10px;padding:10px;margin-top:10px;font-weight:700">✅ Rasm nusxalandi. Ochilgan Telegram/WhatsApp oynasida chatni tanlang va <u>Ctrl+V</u> bosing — rasm matn bilan birga qo'shiladi.</div>
       <p style="font-size:13px;color:#666;margin:10px 0 0">Instagram uchun: rasmni yuklab oling va Instagram'da post qiling, matnni nusxalab izohga qo'ying. Telefonda "Jo'natish" bosilsa, Instagram ro'yxatda o'zi chiqadi.</p>
       <button data-close style="${btn("#eee", "#222")};margin-top:12px;width:100%">Yopish</button></div>`;
     document.body.appendChild(box);
     box.onclick = async e => {
       if (e.target === box || e.target.closest("[data-close]")) { box.remove(); URL.revokeObjectURL(url); }
+      // Kompyuterda havola orqali rasm yuborib bo'lmaydi — rasm nusxalanadi (Ctrl+V bilan qo'yiladi), matn esa havola bilan ochiladi
+      const go = e.target.closest("[data-tg],[data-wa]");
+      if (go) {
+        try { await navigator.clipboard.write([new ClipboardItem({"image/png": shareCard.png()})]); box.querySelector("[data-hint]").style.display = "block"; } catch {}
+        window.open(go.dataset.tg !== undefined ? `https://t.me/share/url?url=${enc(SHARE_SITE)}&text=${enc(text.replace(/\n🌐 [^\n]*/, ""))}` : `https://wa.me/?text=${enc(text)}`, "_blank", "noopener");
+      }
       if (e.target.closest("[data-dlall]")) [[url, name], ...(d.photos || []).map((u, i) => [u, name.replace(".jpg", `-${i + 1}.jpg`)])].forEach(([h, n], i) => setTimeout(() => { const a = document.createElement("a"); a.href = h; a.download = n; document.body.appendChild(a); a.click(); a.remove(); }, i * 400));
       if (e.target.closest("[data-copy]")) { try { await navigator.clipboard.writeText(text); e.target.textContent = "✓ Nusxalandi"; } catch { prompt("Matnni nusxalang:", text); } }
     };
