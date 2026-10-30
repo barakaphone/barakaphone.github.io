@@ -317,7 +317,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.30-2";
+const APP_VERSION = "2026.10.30-3";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -530,6 +530,7 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
+  "Telefoningiz qaysi brend?": "Какой у вас бренд телефона?", "Model nomini yozing, masalan S24 Ultra": "Введите модель, например S24 Ultra",
   "Telefoningiz qaysi model?": "Какая у вас модель телефона?", "Eski telefoningizni yangisiga almashtiring": "Обменяйте старый телефон на новый",
   "iPhone: Sozlamalar → Batareya → Batareya holati. Samsung: Samsung Members → Diagnostika → Batareya.": "iPhone: Настройки → Аккумулятор → Состояние. Samsung: Samsung Members → Диагностика → Батарея.",
   "Eslatma: xaridni faqat {l} hududlarida amalga oshirishingiz mumkin.": "Обратите внимание: покупку можно оформить только в регионах: {l}.",
@@ -655,6 +656,8 @@ const warnHtml = () => `<div class="warn">⚠️ ${t("Diqqat! Ushbu telefon baho
 
 const STEPS = ["Baholash", "Almashtirish", "To'lov", "Ariza"];
 const QS = [
+  // Avval brend: iPhone yoki Samsung (narxi kiritilgan modellari bor brendlar; bitta bo'lsa — savol o'tkazib yuboriladi)
+  {k: "brand", t: "Telefoningiz qaysi brend?", get opts() { return brandList().map(b => [b, b === "Apple" ? "iPhone" : b]); }},
   {k: "model", t: "Telefoningiz qaysi model?"},
   {k: "mem", t: "Xotira hajmi qancha?"},
   {k: "color", t: "Rangi qanday?"},
@@ -757,6 +760,7 @@ function renderWizard() {
   const el = $("#page"), l = stepList();
   let h = `<div class="stepper">${l.map((s, i) => `<div class="st ${s === W.step ? "on" : ""} ${s < W.step ? "done" : ""}"><div class="c">${s < W.step ? "✓" : i + 1}</div>${stepName(s)}</div>`).join("")}</div>`;
   if (W.pre && W.step === 0 && ourStock()) { const s = ourStock(); h += `<div class="chosen"><span class="pimg">${imgOf(s)}</span><div><small>${t("Siz tanlagan telefon")}</small><b>${esc(s.modelName)} ${esc(s.mem || "")}</b><span>${uzs(sellUzs(s.sellUsd))}</span></div><button class="qback" data-act="home">${t("O'zgartirish")}</button></div>`; }
+  if (W.step === 0 && QS[W.q]?.k === "brand" && brandList().length < 2) { W.brand = brandList()[0] || ""; W.q++; }
   if (W.step === 0) h += W.q < SUMMARY ? questionHtml() : summaryHtml();
   if (W.step === 1) h += hero("⇄", t("Yangi telefonni tanlang"), t("Do'konlarimizda sotuvdagi telefonlar")) + `<input class="inp" id="q2" placeholder="${esc(t("Qidirish: model, xotira yoki rang"))}" value="${esc(W.q2)}" style="margin-bottom:12px"><div class="pgrid" id="stockGrid"></div><div id="compare"></div>`;
   if (W.step === 2) h += payHtml();
@@ -782,7 +786,7 @@ function questionHtml() {
   let h = `<div class="qhead"><div class="prog"><i style="width:${Math.round(W.q / SUMMARY * 100)}%"></i></div><div class="qcount">${W.q + 1} / ${SUMMARY}</div></div>
   <button class="qback" data-act="${W.hist.length ? "qback" : "home"}">${t("← Orqaga")}</button><h2 class="qt">${esc(t(Q.t))}</h2>${Q.hint ? `<p class="qhint">${esc(t(Q.hint))}</p>` : ""}`;
   const go = `<button class="btn pri block" style="margin-top:14px" data-act="${Q.k}Ok">${t("Davom etish")}</button>`;
-  if (Q.k === "model") h += S.models.length ? `<input class="inp" id="mq" placeholder="${esc(t("Model nomini yozing, masalan 13 Pro"))}" value="${esc(W.mq)}" autocomplete="off"><div class="mlist" id="mlist"></div>` : `<div class="empty">${t("Hozircha modellar ro'yxati bo'sh. Do'konga murojaat qiling.")}</div>`;
+  if (Q.k === "model") h += S.models.length ? `<input class="inp" id="mq" placeholder="${esc(t(W.brand === "Samsung" ? "Model nomini yozing, masalan S24 Ultra" : "Model nomini yozing, masalan 13 Pro"))}" value="${esc(W.mq)}" autocomplete="off"><div class="mlist" id="mlist"></div>` : `<div class="empty">${t("Hozircha modellar ro'yxati bo'sh. Do'konga murojaat qiling.")}</div>`;
   else if (Q.k === "mem") h += `<p class="qhint">${esc(m.name)}</p><div class="ogrid">${m.mems.map(x => `<button class="opt ${W.mem === x ? "on" : ""}" data-ans="mem" data-v="${esc(x)}">${esc(x)}</button>`).join("")}</div>`;
   else if (Q.k === "color") { const cols = colorsOf(m); h += `<p class="qhint">${esc(m.name)}</p><div class="ogrid">${cols.map(c => `<button class="opt ${W.color === c ? "on" : ""}" data-ans="color" data-v="${esc(c)}">${esc(colorUz(c))}</button>`).join("")}</div>
     <div style="display:flex;gap:8px;margin-top:14px"><input class="inp" id="colorTxt" placeholder="${esc(t("Ro'yxatda yo'q bo'lsa, yozing"))}" value="${esc(cols.includes(W.color) ? "" : W.color)}"><button class="btn sec" data-act="colorOk">${t("Davom etish")}</button></div>
@@ -797,9 +801,10 @@ function questionHtml() {
   else { const opts = Q.pts ? S.settings.pts[Q.k].map(o => [o.v, o.label]) : Q.opts; h += `<div class="olist">${opts.map(o => `<button class="opt ${W[Q.k] === o[0] ? "on" : ""}" data-ans="${Q.k}" data-v="${o[0]}">${esc(t(o[1]))}</button>`).join("")}</div>`; }
   return h;
 }
+const brandList = () => ["Apple", "Samsung"].filter(b => S.models.some(m => m.brand === b));
 function renderModelList() {
   const el = $("#mlist"); if (!el) return; const q = W.mq.trim().toLowerCase();
-  const items = S.models.filter(x => !q || x.name.toLowerCase().includes(q));
+  const items = S.models.filter(x => (!W.brand || x.brand === W.brand) && (!q || x.name.toLowerCase().includes(q)));
   el.innerHTML = items.length ? items.map(x => `<button class="${W.modelId === x.id ? "on" : ""}" data-ans="model" data-v="${x.id}">${esc(x.name)}</button>`).join("") : `<div class="empty">${t("Model topilmadi. Do'konga qo'ng'iroq qiling — qo'lda baholab beramiz.")}</div>`;
 }
 function summaryHtml() {
@@ -899,6 +904,7 @@ function renderAction() {
 }
 const refreshNext = () => { const b = document.querySelector("[data-act=next]"); if (b) b.disabled = !canNext(); };
 function answer(k, v) {
+  if (k === "brand" && W.brand !== v) { W.modelId = null; W.mem = null; W.color = ""; W.sim = null; W.mq = ""; }
   if (k === "model") { if (W.modelId !== v) { W.mem = null; W.color = ""; W.sim = null; } W.modelId = v; } else W[k] = v;
   let next = W.q + 1; while (QS[next] && QS[next].cond && !QS[next].cond()) next++;
   W.hist.push(W.q); W.q = next; renderWizard(); window.scrollTo(0, 0);
