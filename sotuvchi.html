@@ -282,7 +282,7 @@ details summary{cursor:pointer;color:var(--g);font-weight:600;margin-top:8px;fon
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
 
-<script src="shartnoma.js?v=2026.10.30-1"></script>
+<script src="shartnoma.js?v=2026.10.30-2"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, updatePassword,
@@ -294,7 +294,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, quer
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.30-1";
+const APP_VERSION = "2026.10.30-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -399,7 +399,7 @@ const bName = id => S.branches.find(b => b.id === id)?.name || "Boshqa filial";
 const S = {me: null, branch: null, branches: [], stockAll: [], stockScope: "mine", settings: null, models: [], stock: [], deals: [], sales: [], arizalar: [], arzOk: true, arzFilter: "yangi", tab: "tradein", stockFilter: "sotuvda", stockQ: ""};
 
 // Ishlanadigan modellar: iPhone 13 dan 17 Pro Max gacha + admin keyin qo'shgan modellar (custom)
-const IN_RANGE = m => m.custom === true || (m.brand === "Apple" && (n => n >= 13 && n <= 17)(+(String(m.name).match(/^iPhone (\d+)/) || [])[1]));
+const IN_RANGE = m => m.custom === true || (m.brand === "Apple" && (n => n >= 13 && n <= 17)(+(String(m.name).match(/^iPhone (\d+)/) || [])[1])) || (m.brand === "Samsung" && /^Galaxy S2[2-5]/i.test(m.name));
 /* Ofis xodimi: barcha filiallarda ishlaydi — qaysi filial nomidan ishlayotganini yuqorida tanlaydi (tanlov eslab qolinadi) */
 async function pickWorkBranch() {
   const hb = await getDoc(doc(db, "branches", S.homeBranch));
@@ -444,7 +444,7 @@ async function loadAll() {
   const c = cat && cat.exists() ? cat.data() : {items: [], branches: {}};
   S.branches = Object.entries(c.branches || {}).map(([id, name]) => ({id, name}));
   S.branch = br.exists() ? {id: b, ...br.data()} : {id: b, name: c.branches?.[b] || "—"};
-  S.models = list(ms).filter(m => m.active !== false && IN_RANGE(m)).sort((x, y) => (x.sort || 0) - (y.sort || 0));
+  S.models = list(ms).filter(m => m.active !== false && IN_RANGE(m) && m.market > 0).sort((x, y) => (x.sort || 0) - (y.sort || 0));
   S.stock = list(sk).sort(byDate);
   // Boshqa filiallardagi sotuvdagi telefonlar — admin panel yuritadigan ro'yxatdan
   S.stockAll = [...S.stock, ...(c.items || []).filter(i => i.branchId !== b).map(i => ({...i, status: "sotuvda", other: true}))]; S.deals = list(dl).sort(byDate); S.sales = list(sa).sort(byDate);

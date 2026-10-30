@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.30-1"></script>
+<script src="shartnoma.js?v=2026.10.30-2"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.30-1";
+const APP_VERSION = "2026.10.30-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -708,7 +708,7 @@ const pickedColor = id => $("#" + id).value === OTHER ? $("#" + id + "Txt").valu
 // Mijoz sahifasidagi kartochkada ko'rinadigan ma'lumotlar
 // Omborga faqat iPhone 13 dan 17 Pro Max gacha qo'shiladi (13 mini, 16e, 17e ham kiradi)
 // Ishlanadigan modellar: iPhone 13 dan 17 Pro Max gacha + admin keyin qo'shgan modellar (custom)
-const IN_RANGE = m => m.custom === true || (m.brand === "Apple" && (n => n >= 13 && n <= 17)(+(String(m.name).match(/^iPhone (\d+)/) || [])[1]));
+const IN_RANGE = m => m.custom === true || (m.brand === "Apple" && (n => n >= 13 && n <= 17)(+(String(m.name).match(/^iPhone (\d+)/) || [])[1])) || (m.brand === "Samsung" && /^Galaxy S2[2-5]/i.test(m.name));
 const STOCK_MODEL = IN_RANGE;
 const COND = {yangi: "Yangi", bu: "B/U"};
 const condSel = (id, cur = "bu") => `<select class="inp" id="${id}">${Object.entries(COND).map(([k, l]) => `<option value="${k}" ${k === cur ? "selected" : ""}>${l}</option>`).join("")}</select>`;
@@ -1808,6 +1808,33 @@ function modelImgModal(m, done) {
 }
 // Mijoz sahifasidagi hududlar (mijoz.html dagi REGION_GEO bilan bir xil nomlar)
 const ARZ_REGIONS = ["Toshkent", "Andijon", "Farg'ona", "Qo'qon"];
+// Samsung Galaxy S22–S25: xotiralar va ranglar; bozor narxi admin tomonidan kiritiladi (kiritilmaguncha mijozga ko'rinmaydi)
+const SAMSUNG_S = [
+  ["Galaxy S22", ["128 GB", "256 GB"], ["Phantom Black", "Phantom White", "Green", "Pink Gold"]],
+  ["Galaxy S22+", ["128 GB", "256 GB"], ["Phantom Black", "Phantom White", "Green", "Pink Gold"]],
+  ["Galaxy S22 Ultra", ["128 GB", "256 GB", "512 GB", "1 TB"], ["Phantom Black", "Phantom White", "Green", "Burgundy"]],
+  ["Galaxy S23", ["128 GB", "256 GB", "512 GB"], ["Phantom Black", "Cream", "Green", "Lavender"]],
+  ["Galaxy S23+", ["256 GB", "512 GB"], ["Phantom Black", "Cream", "Green", "Lavender"]],
+  ["Galaxy S23 Ultra", ["256 GB", "512 GB", "1 TB"], ["Phantom Black", "Cream", "Green", "Lavender"]],
+  ["Galaxy S23 FE", ["128 GB", "256 GB"], ["Graphite", "Mint", "Cream", "Purple"]],
+  ["Galaxy S24", ["128 GB", "256 GB", "512 GB"], ["Onyx Black", "Marble Grey", "Cobalt Violet", "Amber Yellow"]],
+  ["Galaxy S24+", ["256 GB", "512 GB"], ["Onyx Black", "Marble Grey", "Cobalt Violet", "Amber Yellow"]],
+  ["Galaxy S24 Ultra", ["256 GB", "512 GB", "1 TB"], ["Titanium Black", "Titanium Gray", "Titanium Violet", "Titanium Yellow"]],
+  ["Galaxy S24 FE", ["128 GB", "256 GB", "512 GB"], ["Blue", "Graphite", "Gray", "Mint", "Yellow"]],
+  ["Galaxy S25", ["128 GB", "256 GB", "512 GB"], ["Navy", "Icyblue", "Mint", "Silver Shadow"]],
+  ["Galaxy S25+", ["256 GB", "512 GB"], ["Navy", "Icyblue", "Mint", "Silver Shadow"]],
+  ["Galaxy S25 Ultra", ["256 GB", "512 GB", "1 TB"], ["Titanium Silverblue", "Titanium Black", "Titanium Gray", "Titanium Whitesilver"]],
+  ["Galaxy S25 Edge", ["256 GB", "512 GB"], ["Titanium Silver", "Titanium Jetblack", "Titanium Icyblue"]]];
+async function addSamsungModels(done) {
+  const have = new Set(S.models.filter(m => m.brand === "Samsung").map(m => m.name.toLowerCase())), add = SAMSUNG_S.filter(([n]) => !have.has(n.toLowerCase()));
+  if (!add.length) return toast("Samsung S22–S25 modellari ro'yxatda bor");
+  if (!await confirmBox(`${add.length} ta Samsung modeli qo'shiladi (narxsiz). Keyin har biriga <b>B/U bozor narxi</b>ni kiriting — narxi yo'q model mijozga ko'rinmaydi.`, "Qo'shish")) return;
+  try {
+    const b = writeBatch(db), base = Math.max(0, ...S.models.map(x => x.sort || 0)) + 1, added = [];
+    add.forEach(([name, mems, colors], i) => { const ref = doc(collection(db, "models")), m = {brand: "Samsung", name, mems, colors, market: 0, step: 0, sort: base + i, active: true}; b.set(ref, m); added.push({id: ref.id, ...m}); });
+    await b.commit(); S.models.push(...added); syncCatalog(); done(); toast(`${added.length} ta Samsung modeli qo'shildi — narxlarini kiriting`);
+  } catch (e) { toast(errText(e), true); }
+}
 function renderSettings() {
   const s = structuredClone(S.settings); s.sellKurs ||= s.kurs; s.esimUsd ??= 50; s.battPct ??= 1; s.cycPct ??= 1; s.cycUsd ??= 20;
   const num = (path, v, step = 1, w = 90) => `<input class="inp sm" style="width:${w}px" type="number" step="${step}" data-set="${path}" value="${v}">`;
@@ -1844,7 +1871,7 @@ function renderSettings() {
   <div style="position:sticky;bottom:10px;display:flex;justify-content:flex-end;margin-bottom:16px"><button class="btn pri" id="saveSettings">Sozlamalarni saqlash</button></div>
   <div class="panel"><h3 style="margin-top:0">Model narxlari</h3>
     <p class="sub">B/U bozor narxi — mijoz telefonini baholash uchun: a'lo holat, qutisi bilan, eng kichik xotira ($). Yangi telefon sotish narxi — faqat Omborga "Yangi" telefon qo'shganda sotish narxiga avtomatik yoziladi (mijoz bahosiga ta'sir qilmaydi). Har bir keyingi xotira pog'onasiga qo'shimcha summa qo'shiladi. O'zgartirish darhol saqlanadi.</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><input class="inp" id="mSearch" placeholder="Model qidirish" style="max-width:260px"><button class="btn gold" id="addModel">+ Model qo'shish</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><input class="inp" id="mSearch" placeholder="Model qidirish" style="max-width:260px"><button class="btn sec" id="addSamsung">+ Samsung S22–S25</button><button class="btn gold" id="addModel">+ Model qo'shish</button></div>
     <div class="tw"><table><thead><tr><th>Model</th><th>Xotiralar</th><th class="n">B/U bozor narxi, $</th><th class="n">+ pog'ona, $</th><th class="n">Olish narxi</th><th class="n">Yangi telefon sotish narxi, $</th><th>Holat</th></tr></thead><tbody id="mRows"></tbody></table></div>
   </div>`;
   const setPath = (obj, path, v) => { const ks = path.split("."); let o = obj; ks.slice(0, -1).forEach(k => o = o[k]); o[ks[ks.length - 1]] = v; };
@@ -1899,6 +1926,7 @@ function renderSettings() {
   };
   $("#mSearch").oninput = rows; rows();
   $("#addModel").onclick = () => addModelModal(rows);
+  $("#addSamsung").onclick = () => addSamsungModels(rows);
 }
 // Yangi iPhone chiqsa admin o'zi qo'shadi: model mijoz sahifasi, sotuvchi ilovasi va omborda darhol ko'rinadi
 function addModelModal(done) {

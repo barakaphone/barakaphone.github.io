@@ -317,7 +317,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.30-1";
+const APP_VERSION = "2026.10.30-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -414,7 +414,7 @@ const S = {settings: null, models: [], allModels: [], stock: [], branches: []};
 const bName = id => S.branches.find(b => b.id === id)?.name || "—";
 
 // Ishlanadigan modellar: iPhone 13 dan 17 Pro Max gacha + admin keyin qo'shgan modellar (custom)
-const IN_RANGE = m => m.custom === true || (m.brand === "Apple" && (n => n >= 13 && n <= 17)(+(String(m.name).match(/^iPhone (\d+)/) || [])[1]));
+const IN_RANGE = m => m.custom === true || (m.brand === "Apple" && (n => n >= 13 && n <= 17)(+(String(m.name).match(/^iPhone (\d+)/) || [])[1])) || (m.brand === "Samsung" && /^Galaxy S2[2-5]/i.test(m.name));
 async function loadAll() {
   const [st, cat] = await Promise.all([getDoc(doc(db, "settings", "main")), getDoc(doc(db, "settings", "catalog")).catch(() => null)]);
   if (!st.exists()) throw {message: t("Xizmat hali sozlanmagan. Do'konga murojaat qiling.")};
@@ -424,10 +424,11 @@ async function loadAll() {
   const ms = c.models?.length ? c.models : (await getDocs(collection(db, "models"))).docs.map(d => ({id: d.id, ...d.data()}));
   S.allModels = ms.filter(m => m.active !== false).sort((x, y) => (x.sort || 0) - (y.sort || 0));
   // Faqat iPhone bilan ishlanadi
-  S.models = S.allModels.filter(IN_RANGE);
+  // iPhone 13–17 va Samsung Galaxy S22–S25; bozor narxi kiritilmagan model mijozga ko'rinmaydi
+  S.models = S.allModels.filter(m => IN_RANGE(m) && m.market > 0);
   S.branches = Object.entries(c.branches || {}).map(([id, name]) => ({id, name: c.addrs?.[id] ? `${name} (${c.addrs[id]})` : name}));
   // Sotuvdagi telefonlar — admin panel yuritadigan qisqa ro'yxat (tannarx va IMEI yo'q)
-  S.stock = (c.items || []).filter(i => i.sellUsd > 0 && (i.brand ? i.brand === "Apple" : /iphone/i.test(i.modelName))).sort((a, b) => b.sellUsd - a.sellUsd);
+  S.stock = (c.items || []).filter(i => i.sellUsd > 0 && (i.brand ? ["Apple", "Samsung"].includes(i.brand) : /iphone|galaxy/i.test(i.modelName))).sort((a, b) => b.sellUsd - a.sellUsd);
 }
 
 /* ================= HOLAT RASMLARI (o'zimiz chizgan SVG) ================= */
@@ -529,6 +530,8 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
+  "Telefoningiz qaysi model?": "Какая у вас модель телефона?", "Eski telefoningizni yangisiga almashtiring": "Обменяйте старый телефон на новый",
+  "iPhone: Sozlamalar → Batareya → Batareya holati. Samsung: Samsung Members → Diagnostika → Batareya.": "iPhone: Настройки → Аккумулятор → Состояние. Samsung: Samsung Members → Диагностика → Батарея.",
   "Eslatma: xaridni faqat {l} hududlarida amalga oshirishingiz mumkin.": "Обратите внимание: покупку можно оформить только в регионах: {l}.",
   "Joylashuvingiz aniqlanmoqda… Telefon so'rasa, \"Ruxsat berish\" ni bosing.": "Определяем ваше местоположение… Если телефон спросит, нажмите «Разрешить».",
   "Ariza qoldirish uchun joylashuvingizga ruxsat bering. Brauzer sozlamalarida shu sayt uchun \"Joylashuv\" ni yoqing.": "Чтобы оставить заявку, разрешите доступ к местоположению. Включите «Геолокацию» для этого сайта в настройках браузера.",
@@ -652,13 +655,13 @@ const warnHtml = () => `<div class="warn">⚠️ ${t("Diqqat! Ushbu telefon baho
 
 const STEPS = ["Baholash", "Almashtirish", "To'lov", "Ariza"];
 const QS = [
-  {k: "model", t: "iPhone'ingiz qaysi model?"},
+  {k: "model", t: "Telefoningiz qaysi model?"},
   {k: "mem", t: "Xotira hajmi qancha?"},
   {k: "color", t: "Rangi qanday?"},
   {k: "sim", t: "SIM karta turi qanday?", hint: "Sozlamalar → Umumiy → Ushbu qurilma haqida: \"Jismoniy SIM\" qatori bo'lsa — SIM + eSIM.", opts: [["sim", "SIM + eSIM"], ["esim", "eSIM + eSIM (SIM joyi yo'q)"]], cond: () => hasEsim(curModel())},
   {k: "screen", t: "Ekran holati qanday?", pts: 1, hint: "Ekranni yorug'da, turli burchakdan ko'zdan kechiring."},
   {k: "body", t: "Korpus holati qanday?", pts: 1, hint: "Yon ramka, burchaklar va orqa qopqoqni tekshiring."},
-  {k: "batt", t: "Batareya sig'imi necha foiz?", hint: "Sozlamalar → Batareya → Batareya holati."},
+  {k: "batt", t: "Batareya sig'imi necha foiz?", hint: "iPhone: Sozlamalar → Batareya → Batareya holati. Samsung: Samsung Members → Diagnostika → Batareya."},
   {k: "cyc", t: "Batareya sikli nechta? (necha marta to'liq zaryadlangan)", hint: "Sozlamalar → Umumiy → Ushbu qurilma haqida → Batareya → \"Sikllar soni\".", cond: () => hasCycles(curModel())},
   {k: "bio", t: "Face ID / barmoq izi ishlaydimi?", pts: 1},
   {k: "repair", t: "Telefon ta'mirlanganmi?", pts: 1, hint: "Sozlamalar → Umumiy → Ushbu qurilma haqida → Detallar va xizmat tarixi."},
@@ -734,7 +737,7 @@ function renderStockGrid() {
 
 /* ---- Bosh sahifa: vitrina ---- */
 function renderHome() {
-  $("#page").innerHTML = `<div class="welcome"><h1>${t("Eski iPhone'ingizni yangisiga almashtiring")}</h1>
+  $("#page").innerHTML = `<div class="welcome"><h1>${t("Eski telefoningizni yangisiga almashtiring")}</h1>
 </div>
   <div class="hbtns"><button class="btn pri" data-act="start">${t("Telefonimni almashtirish →")}</button><button class="btn sec" data-act="startSell">${t("Telefonimni sotish")}</button></div>
   <div class="admtels"><a class="admtel" href="tel:+998911549944">📞 ${t("Admin")} Malika: <b>+998 91 154 99 44</b></a><a class="admtel" href="tel:+998900573915">📞 ${t("Admin")} Anora: <b>+998 90 057 39 15</b></a></div>
