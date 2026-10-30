@@ -317,7 +317,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.10.29-4";
+const APP_VERSION = "2026.10.30-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -416,12 +416,13 @@ const bName = id => S.branches.find(b => b.id === id)?.name || "—";
 // Ishlanadigan modellar: iPhone 13 dan 17 Pro Max gacha + admin keyin qo'shgan modellar (custom)
 const IN_RANGE = m => m.custom === true || (m.brand === "Apple" && (n => n >= 13 && n <= 17)(+(String(m.name).match(/^iPhone (\d+)/) || [])[1]));
 async function loadAll() {
-  const [st, ms, cat] = await Promise.all([
-    getDoc(doc(db, "settings", "main")), getDocs(collection(db, "models")), getDoc(doc(db, "settings", "catalog")).catch(() => null)]);
+  const [st, cat] = await Promise.all([getDoc(doc(db, "settings", "main")), getDoc(doc(db, "settings", "catalog")).catch(() => null)]);
   if (!st.exists()) throw {message: t("Xizmat hali sozlanmagan. Do'konga murojaat qiling.")};
   const c = cat && cat.exists() ? cat.data() : {items: [], branches: {}};
   S.settings = st.data();
-  S.allModels = ms.docs.map(d => ({id: d.id, ...d.data()})).filter(m => m.active !== false).sort((x, y) => (x.sort || 0) - (y.sort || 0));
+  // Modellar admin panel yangilab turadigan catalog hujjatidan (1 ta o'qish); u hali bo'lmasa — modellar to'plamidan
+  const ms = c.models?.length ? c.models : (await getDocs(collection(db, "models"))).docs.map(d => ({id: d.id, ...d.data()}));
+  S.allModels = ms.filter(m => m.active !== false).sort((x, y) => (x.sort || 0) - (y.sort || 0));
   // Faqat iPhone bilan ishlanadi
   S.models = S.allModels.filter(IN_RANGE);
   S.branches = Object.entries(c.branches || {}).map(([id, name]) => ({id, name: c.addrs?.[id] ? `${name} (${c.addrs[id]})` : name}));

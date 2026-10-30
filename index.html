@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.29-4"></script>
+<script src="shartnoma.js?v=2026.10.30-1"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.29-4";
+const APP_VERSION = "2026.10.30-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -397,7 +397,10 @@ function syncCatalog() {
       const items = S.stock.filter(s => s.status === "sotuvda").map(s => ({id: s.id, branchId: s.branchId, modelName: s.modelName || "", brand: s.brand || "", mem: s.mem || "", color: s.color || "", grade: s.grade || "", battery: s.battery || null, cyc: s.cyc ?? null, box: s.box || "", cond: s.cond || "bu", sellUsd: s.sellUsd || 0}));
       const branches = Object.fromEntries(S.branches.map(b => [b.id, b.name])), offices = S.branches.filter(b => b.isOffice).map(b => b.id);
       const addrs = Object.fromEntries(S.branches.filter(b => b.address).map(b => [b.id, b.address]));
-      await setDoc(doc(db, "settings", "catalog"), {items, branches, offices, addrs, updatedAt: serverTimestamp()});
+      // Modellar ham shu hujjatda: mijoz sahifasi har kirishda 60+ hujjat o'rniga 1 ta hujjat o'qiydi (kunlik o'qish limitini tejaydi)
+      const models = S.models.filter(m => m.active !== false).map(m => ({id: m.id, brand: m.brand || "", name: m.name || "", mems: m.mems || [], market: m.market || 0, step: m.step || 0,
+        colors: m.colors || [], sort: m.sort || 0, custom: !!m.custom, ...(m.marketNew ? {marketNew: m.marketNew} : {}), ...(m.img && !String(m.img).startsWith("data:") ? {img: m.img} : {})}));
+      await setDoc(doc(db, "settings", "catalog"), {items, branches, offices, addrs, models, updatedAt: serverTimestamp()});
     } catch (e) { console.warn("catalog", e); }
   }, 400);
 }
@@ -1789,7 +1792,7 @@ function modelImgModal(m, done) {
   <div class="acts">${m.img ? `<button class="btn bad" id="miDel" style="margin-right:auto">Rasmni o'chirish</button>` : ""}<button class="btn sec" id="miNo">Bekor qilish</button><button class="btn pri" id="miOk">Saqlash</button></div>`);
   prev();
   if ($("#miApple")) $("#miApple").onclick = async () => {
-    try { await updateDoc(doc(db, "models", m.id), {img: appleImg(m.name), colors: appleDef.colors}); m.img = appleImg(m.name); m.colors = appleDef.colors.slice(); closeModal(); done(); toast("Apple rasmi va " + appleDef.colors.length + " ta rang biriktirildi"); }
+    try { await updateDoc(doc(db, "models", m.id), {img: appleImg(m.name), colors: appleDef.colors}); m.img = appleImg(m.name); m.colors = appleDef.colors.slice(); closeModal(); done(); syncCatalog(); toast("Apple rasmi va " + appleDef.colors.length + " ta rang biriktirildi"); }
     catch (e) { toast(errText(e), true); }
   };
   $("#miUrl").oninput = e => { src = e.target.value.trim(); prev(); };
@@ -1797,7 +1800,7 @@ function modelImgModal(m, done) {
   $("#miNo").onclick = closeModal;
   const save = async v => {
     if (v && !/^(https:\/\/|data:image\/)/.test(v)) return toast("Havola https:// bilan boshlanishi kerak", true);
-    try { await updateDoc(doc(db, "models", m.id), {img: v ? v : deleteField()}); if (v) m.img = v; else delete m.img; closeModal(); done(); toast(v ? "Rasm saqlandi" : "Rasm o'chirildi"); }
+    try { await updateDoc(doc(db, "models", m.id), {img: v ? v : deleteField()}); if (v) m.img = v; else delete m.img; closeModal(); done(); syncCatalog(); toast(v ? "Rasm saqlandi" : "Rasm o'chirildi"); }
     catch (e) { toast(errText(e), true); }
   };
   $("#miOk").onclick = () => save(src);
@@ -1870,7 +1873,7 @@ function renderSettings() {
       <td><button class="btn ${m.active !== false ? "sec" : "gold"} sm" data-ma="${m.id}">${m.active !== false ? "Yashirish" : "Ko'rsatish"}</button> <button class="btn bad sm" data-mdel="${m.id}" title="Modelni o'chirish">O'chirish</button></td></tr>`).join("");
     document.querySelectorAll("[data-mk],[data-ms],[data-mn]").forEach(inp => inp.onchange = async () => {
       const id = inp.dataset.mk || inp.dataset.ms || inp.dataset.mn, f = inp.dataset.mk ? "market" : inp.dataset.mn ? "marketNew" : "step", v = +inp.value; if (!(v >= 0)) return;
-      try { await updateDoc(doc(db, "models", id), {[f]: v}); S.models.find(m => m.id === id)[f] = v; rows(); toast("Saqlandi"); } catch (e) { toast(errText(e), true); }
+      try { await updateDoc(doc(db, "models", id), {[f]: v}); S.models.find(m => m.id === id)[f] = v; rows(); syncCatalog(); toast("Saqlandi"); } catch (e) { toast(errText(e), true); }
     });
     document.querySelectorAll("[data-mc]").forEach(b => b.onclick = () => {
       const m = S.models.find(x => x.id === b.dataset.mc);
@@ -1880,18 +1883,18 @@ function renderSettings() {
       $("#mcNo").onclick = closeModal;
       $("#mcOk").onclick = async () => {
         const colors = $("#mcIn").value.split(",").map(x => x.trim()).filter(Boolean);
-        try { await updateDoc(doc(db, "models", m.id), {colors}); m.colors = colors; closeModal(); rows(); toast("Ranglar saqlandi"); } catch (e) { toast(errText(e), true); }
+        try { await updateDoc(doc(db, "models", m.id), {colors}); m.colors = colors; closeModal(); rows(); syncCatalog(); toast("Ranglar saqlandi"); } catch (e) { toast(errText(e), true); }
       };
     });
     document.querySelectorAll("[data-mimg]").forEach(b => b.onclick = () => modelImgModal(S.models.find(x => x.id === b.dataset.mimg), rows));
     document.querySelectorAll("[data-mdel]").forEach(b => b.onclick = async () => {
       const m = S.models.find(x => x.id === b.dataset.mdel);
       if (!await confirmBox(`<b>${esc(m.name)}</b> modelini butunlay o'chirasizmi? U mijoz sahifasi, sotuvchi ilovasi va narxlar ro'yxatidan yo'qoladi. Ombordagi telefonlar va shartnomalar o'zgarmaydi.`, "O'chirish")) return;
-      try { await deleteDoc(doc(db, "models", m.id)); S.models = S.models.filter(x => x.id !== m.id); rows(); toast("Model o'chirildi"); } catch (e) { toast(errText(e), true); }
+      try { await deleteDoc(doc(db, "models", m.id)); S.models = S.models.filter(x => x.id !== m.id); rows(); syncCatalog(); toast("Model o'chirildi"); } catch (e) { toast(errText(e), true); }
     });
     document.querySelectorAll("[data-ma]").forEach(b => b.onclick = async () => {
       const m = S.models.find(x => x.id === b.dataset.ma), v = m.active === false;
-      try { await updateDoc(doc(db, "models", m.id), {active: v}); m.active = v; rows(); toast(v ? "Model ko'rsatiladi" : "Model ilovada yashirildi"); } catch (e) { toast(errText(e), true); }
+      try { await updateDoc(doc(db, "models", m.id), {active: v}); m.active = v; rows(); syncCatalog(); toast(v ? "Model ko'rsatiladi" : "Model ilovada yashirildi"); } catch (e) { toast(errText(e), true); }
     });
   };
   $("#mSearch").oninput = rows; rows();
@@ -1931,7 +1934,7 @@ function addModelModal(done) {
       if (!m.brand || !m.name || !m.mems.length || !(m.market > 0)) { $("#amErr").textContent = "Brend, model, xotira va narxni kiriting"; $("#amErr").classList.remove("hidden"); return; }
       if (S.models.some(x => x.name.toLowerCase() === m.name.toLowerCase() && IN_RANGE(x))) { $("#amErr").textContent = "Bu model ro'yxatda bor"; $("#amErr").classList.remove("hidden"); return; }
       if (appleImg(m.name)) m.img = appleImg(m.name);
-      try { const ref = doc(collection(db, "models")); await setDoc(ref, m); S.models.unshift({id: ref.id, ...m}); closeModal(); done && done(); toast("Model qo'shildi"); }
+      try { const ref = doc(collection(db, "models")); await setDoc(ref, m); S.models.unshift({id: ref.id, ...m}); closeModal(); done && done(); syncCatalog(); toast("Model qo'shildi"); }
       catch (e) { $("#amErr").textContent = errText(e); $("#amErr").classList.remove("hidden"); }
     };
 }
