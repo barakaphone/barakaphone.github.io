@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.10.30-3"></script>
+<script src="shartnoma.js?v=2026.10.31-1"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.10.30-3";
+const APP_VERSION = "2026.10.31-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -633,7 +633,7 @@ function renderStock() {
   </div>
   <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
     <div class="chips">${[["sotuvda","Sotuvda"],["tayyorlanmoqda","Tayyorlanmoqda"],["sotilgan","Sotilgan"],["all","Hammasi"]].map(([k, l]) => `<button class="chip ${S.stockFilter === k ? "on" : ""}" data-sf="${k}">${l} · ${cnt(k)}</button>`).join("")}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" id="tagAll" title="Ro'yxatdagi sotilmagan telefonlar uchun">🏷 Barchasiga sennik</button><button class="btn sec" id="addModelSt">+ Model qo'shish</button><button class="btn gold" id="addStock">+ Telefon qo'shish</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" id="stockXlsx" title="Ekrandagi ro'yxatni Excel faylga yuklab olish">⬇ Excel</button><button class="btn sec" id="tagAll" title="Ro'yxatdagi sotilmagan telefonlar uchun">🏷 Barchasiga sennik</button><button class="btn sec" id="addModelSt">+ Model qo'shish</button><button class="btn gold" id="addStock">+ Telefon qo'shish</button></div>
   </div>
   ${items.length ? `<div class="tw"><table><thead><tr><th>Telefon</th><th>Filial</th><th class="n">Tannarx, $</th><th class="n">Sotish narxi, $</th><th class="n">Foyda</th><th>Holat</th><th></th></tr></thead><tbody>
   ${items.map(s => {
@@ -652,6 +652,7 @@ function renderStock() {
     <td style="white-space:nowrap">${sold ? (isOwner() ? `<button class="btn bad sm" data-delsold="${s.id}">O'chirish</button>` : "") : `<button class="btn gold sm" data-tag="${s.id}">🏷 Sennik</button> ${s.status === "sotuvda" ? `<button class="btn sec sm" data-share="${s.id}">📤 Jo'natish</button> ` : ""}<button class="btn sec sm" data-sedit="${s.id}">Tahrirlash</button> <button class="btn sec sm" data-move="${s.id}">Ko'chirish</button> <button class="btn bad sm" data-delstock="${s.id}">O'chirish</button>`}</td></tr>`}).join("")}
   </tbody></table></div>` : `<div class="panel empty">Bu bo'limda telefon yo'q.</div>`}`;
   document.querySelectorAll("[data-sf]").forEach(b => b.onclick = () => { S.stockFilter = b.dataset.sf; renderStock(); });
+  $("#stockXlsx").onclick = () => stockExcel(items);
   $("#addStock").onclick = stockModal;
   $("#addModelSt").onclick = () => addModelModal(renderStock);
   document.querySelectorAll("[data-buy],[data-sell]").forEach(inp => inp.onchange = async () => {
@@ -774,6 +775,29 @@ document.addEventListener("click", async e => {
   b.disabled = true; const t0 = b.textContent; b.textContent = "⏳";
   try { await Shartnoma.share({...shareData(s), photos: await stockPhotos(s)}); } catch (er) { toast("Jo'natib bo'lmadi: " + (er.message || er), true); } b.disabled = false; b.textContent = t0;
 });
+// Ombor ro'yxatini Excel (.xlsx) faylga yuklab olish — ekrandagi filtr (holat va filial) bo'yicha
+let xlsxLib = null;
+const loadXlsx = () => xlsxLib ||= new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "xlsx.full.min.js"; sc.onload = () => res(window.XLSX); sc.onerror = () => { xlsxLib = null; rej(new Error("Excel kutubxonasini yuklab bo'lmadi")); }; document.head.appendChild(sc); });
+async function stockExcel(items) {
+  if (!items.length) return toast("Ro'yxat bo'sh", true);
+  try {
+    const XLSX = await loadXlsx(), d = v => { const x = toDate(v); return x ? x.toLocaleDateString("ru-RU") : ""; };
+    const rows = items.map(s => {
+      const sold = s.status === "sotilgan", buy = toUzs(s.buyUsd), sell = sellUzs(s.sellUsd), got = sold && s.sold?.priceUzs ? s.sold.priceUzs : null;
+      return {"Telefon": s.modelName || "", "Xotira": s.mem || "", "Rangi": s.color ? colorUz(s.color) : "", "Holati": s.cond === "yangi" ? "Yangi" : "B/U", "Daraja": s.grade || "",
+        "Batareya, %": s.battery ?? "", "Sikl": s.cyc ?? "", "Qutisi": s.box === "yes" ? "bor" : s.box === "no" ? "yo'q" : "", "Region": s.region || "", "IMEI": s.imei || "",
+        "Filial": bName(s.branchId), "Manba": s.source === "trade-in" ? "Trade-in" : "Xarid", "Kirim sanasi": d(s.createdAt),
+        "Tannarx, $": s.buyUsd || 0, "Tannarx, so'm": buy, "Sotish narxi, $": s.sellUsd || 0, "Sotish narxi, so'm": sell,
+        "Foyda, so'm": (got ?? sell) - buy, "Holat": ST_LABEL[s.status] || s.status || "",
+        "Sotilgan sana": sold ? d(s.sold?.at) : "", "Sotilgan narx, so'm": got ?? "", "Mijoz": sold ? s.sold?.clientName || "" : "",
+        "Sotuv turi": sold ? (s.sold?.kind === "deal" ? "Trade-in" : s.sold?.kind === "offline" ? "Oflayn do'kon" : "Sotuv") : ""};
+    });
+    const ws = XLSX.utils.json_to_sheet(rows); ws["!cols"] = Object.keys(rows[0]).map(k => ({wch: Math.max(k.length, ...rows.map(r => String(r[k]).length)) + 2}));
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Ombor");
+    const f = {sotuvda: "sotuvda", tayyorlanmoqda: "tayyorlanmoqda", sotilgan: "sotilgan", all: "hammasi"}[S.stockFilter] || "ombor";
+    XLSX.writeFile(wb, `Ombor-${f}-${new Date().toISOString().slice(0, 10)}.xlsx`); toast(`Excel yuklab olindi: ${rows.length} ta telefon`);
+  } catch (e) { toast(errText(e), true); }
+}
 function offlineSoldModal(s) {
   modal(`<h2>Oflayn do'kondan sotildi</h2><p class="sub">${esc(s.modelName)} ${esc(s.mem || "")}${s.color ? ", " + esc(colorUz(s.color)) : ""} · ${esc(bName(s.branchId))}</p>
     <div class="field"><label>Sotilgan narx, so'm</label><input class="inp" id="ofPrice" inputmode="numeric" value="${sum(sellUzs(s.sellUsd))}"></div>
