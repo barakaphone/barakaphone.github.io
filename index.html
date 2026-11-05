@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="qrcode.min.js"></script>
-<script src="shartnoma.js?v=2026.11.05-1"></script>
+<script src="shartnoma.js?v=2026.11.05-2"></script>
 <style>
 :root{
   --bg:#F3F5F9; --surface:#fff; --surface2:#F5F7FB; --ink:#141C2E; --muted:#5F6B82; --line:#DCE2EC;
@@ -259,7 +259,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, colle
 /* ================= VERSIYA VA AVTO-YANGILANISH =================
    Telefon yoki brauzer eski nusxani eslab qolsa ham, sahifa serverdagi
    versiyani tekshiradi va yangisi bo'lsa o'zini qayta yuklaydi. */
-const APP_VERSION = "2026.11.05-1";
+const APP_VERSION = "2026.11.05-2";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -783,7 +783,9 @@ const loadXlsx = () => xlsxLib ||= new Promise((res, rej) => { const sc = docume
 async function stockExcel(items) {
   if (!items.length) return toast("Ro'yxat bo'sh", true);
   try {
-    const XLSX = await loadXlsx(), d = v => { const x = toDate(v); return x ? x.toLocaleDateString("ru-RU") : ""; };
+    // Sanalar Excel'ning haqiqiy sana qiymati bo'lib yoziladi — Excel'da sana bo'yicha filtrlash va saralash ishlaydi
+    const XLSX = await loadXlsx(), serial = (v, time) => { const x = toDate(v); if (!x) return ""; return (Date.UTC(x.getFullYear(), x.getMonth(), x.getDate(), time ? x.getHours() : 0, time ? x.getMinutes() : 0) - Date.UTC(1899, 11, 30)) / 864e5; };
+    const d = v => serial(v, false);
     const rows = items.map(s => {
       const sold = s.status === "sotilgan", buy = toUzs(s.buyUsd), sell = sellUzs(s.sellUsd), got = sold && s.sold?.priceUzs ? s.sold.priceUzs : null;
       return {"Telefon": s.modelName || "", "Xotira": s.mem || "", "Rangi": s.color ? colorUz(s.color) : "", "Holati": s.cond === "yangi" ? "Yangi" : "B/U", "Daraja": s.grade || "",
@@ -791,10 +793,14 @@ async function stockExcel(items) {
         "Filial": bName(s.branchId), "Manba": s.source === "trade-in" ? "Trade-in" : "Xarid", "Kirim sanasi": d(s.createdAt),
         "Tannarx, $": s.buyUsd || 0, "Tannarx, so'm": buy, "Sotish narxi, $": s.sellUsd || 0, "Sotish narxi, so'm": sell,
         "Foyda, so'm": (got ?? sell) - buy, "Holat": ST_LABEL[s.status] || s.status || "",
-        "Sotilgan sana": sold ? fdt(s.sold?.at).replace("—", "") : "", "Sotilgan narx, so'm": got ?? "", "Mijoz": sold ? s.sold?.clientName || "" : "",
+        "Sotilgan sana": sold ? serial(s.sold?.at, true) : "", "Sotilgan narx, so'm": got ?? "", "Mijoz": sold ? s.sold?.clientName || "" : "",
         "Sotuv turi": sold ? (s.sold?.kind === "deal" ? "Trade-in" : s.sold?.kind === "offline" ? "Oflayn do'kon" : "Sotuv") : ""};
     });
-    const ws = XLSX.utils.json_to_sheet(rows); ws["!cols"] = Object.keys(rows[0]).map(k => ({wch: Math.max(k.length, ...rows.map(r => String(r[k]).length)) + 2}));
+    const ws = XLSX.utils.json_to_sheet(rows), keys = Object.keys(rows[0]);
+    ws["!cols"] = keys.map(k => ({wch: /sana/i.test(k) ? 17 : Math.max(k.length, ...rows.map(r => String(r[k]).length)) + 2}));
+    keys.forEach((k, ci) => { if (!/sana/i.test(k)) return; const fmt = k === "Sotilgan sana" ? "dd.mm.yyyy hh:mm" : "dd.mm.yyyy";
+      for (let ri = 1; ri <= rows.length; ri++) { const c = ws[XLSX.utils.encode_cell({r: ri, c: ci})]; if (c && c.t === "n") c.z = fmt; } });
+    ws["!autofilter"] = {ref: XLSX.utils.encode_range({s: {r: 0, c: 0}, e: {r: rows.length, c: keys.length - 1}})};
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Ombor");
     const f = {sotuvda: "sotuvda", tayyorlanmoqda: "tayyorlanmoqda", sotilgan: "sotilgan", all: "hammasi"}[S.stockFilter] || "ombor";
     XLSX.writeFile(wb, `Ombor-${f}-${new Date().toISOString().slice(0, 10)}.xlsx`); toast(`Excel yuklab olindi: ${rows.length} ta telefon`);
