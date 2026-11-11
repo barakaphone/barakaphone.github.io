@@ -272,7 +272,8 @@ select.inp{appearance:auto}
 .memo p{margin:8px 0 0}
 .admtels{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-6px 0 18px}.admtels .admtel{margin:0}@media (max-width:640px){.admtels{grid-template-columns:1fr}}
 .admtel{display:flex;align-items:center;justify-content:center;gap:6px;margin:-6px 0 18px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--g);text-decoration:none;font-size:16px}
-.hbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.hbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}.hbtns.one{grid-template-columns:1fr}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 4px}.modes .opt{display:block;text-align:left;padding:14px 16px;min-height:0}.modes .opt small{display:block;margin-top:4px;font-weight:400}.modes .opt.on small{color:#cfd8f3}.modes .opt b{display:block;font-size:17px}.modes .opt small{color:var(--muted)}
 @media (max-width:640px){.hbtns{grid-template-columns:1fr}}
 .phin{display:flex;align-items:stretch}
 .phin span{display:flex;align-items:center;padding:0 12px;background:var(--gSoft);border:1px solid var(--line);border-right:0;border-radius:10px 0 0 10px;font-weight:700;color:var(--g)}
@@ -317,7 +318,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.11.05-2";
+const APP_VERSION = "2026.11.11-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -530,6 +531,8 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
+  "Telefonimni baholash →": "Оценить мой телефон →", "Keyingi qadam": "Следующий шаг", "Trade-in qilish": "Trade-in (обмен)", "Telefoningizni topshirib, yangisini olasiz": "Сдаёте свой телефон и получаете новый",
+  "Sotish": "Продать", "Telefoningizni bizga sotasiz": "Продаёте телефон нам", "Trade-in yoki Sotishni tanlang": "Выберите: Trade-in или Продать",
   "Telefoningiz qaysi brend?": "Какой у вас бренд телефона?", "Model nomini yozing, masalan S24 Ultra": "Введите модель, например S24 Ultra",
   "Telefoningiz qaysi model?": "Какая у вас модель телефона?", "Eski telefoningizni yangisiga almashtiring": "Обменяйте старый телефон на новый",
   "iPhone: Sozlamalar → Batareya → Batareya holati. Samsung: Samsung Members → Diagnostika → Batareya.": "iPhone: Настройки → Аккумулятор → Состояние. Samsung: Samsung Members → Диагностика → Батарея.",
@@ -711,7 +714,7 @@ const imgOf = s => { const src = colorImg(s) || modelOfStock(s)?.img || appleImg
 window.PHONE_SVG = PHONE_SVG;
 
 function canNext() {
-  if (W.step === 0) return W.q === SUMMARY && !!clientCalc();
+  if (W.step === 0) return W.q === SUMMARY && !!clientCalc() && (W.pre || !!W.mode);
   if (W.step === 1) return !!ourStock();
   if (W.step === 3) return !W.saving && geoOk();
   return true;
@@ -742,7 +745,7 @@ function renderStockGrid() {
 function renderHome() {
   $("#page").innerHTML = `<div class="welcome"><h1>${t("Eski telefoningizni yangisiga almashtiring")}</h1>
 </div>
-  <div class="hbtns"><button class="btn pri" data-act="start">${t("Telefonimni almashtirish →")}</button><button class="btn sec" data-act="startSell">${t("Telefonimni sotish")}</button></div>
+  <div class="hbtns one"><button class="btn pri" data-act="start">${t("Telefonimni baholash →")}</button></div>
   <div class="admtels"><a class="admtel" href="tel:+998911549944">📞 ${t("Admin")} Malika: <b>+998 91 154 99 44</b></a><a class="admtel" href="tel:+998900573915">📞 ${t("Admin")} Anora: <b>+998 90 057 39 15</b></a></div>
   <div class="warn" style="margin:-8px 0 18px;text-align:center">ℹ️ ${t("Murojaat qoldirgandan so'ng 15 daqiqa ichida qo'ng'iroq bo'lmasa, iltimos, admin bilan bog'laning.")}</div>
   <h3 style="margin-top:0">${t("Sotuvdagi telefonlar")}</h3>
@@ -814,7 +817,10 @@ function summaryHtml() {
   <button class="qback" data-act="redo">${t("Javoblarni qaytadan ko'rib chiqish")}</button>
   <div class="extra"><div><span class="t">${t("Qutisi")}</span><span class="pill">${t(W.box === "no" ? "Yo'q" : "Bor")}</span></div><div><span class="t">${t("Holati")}</span><span class="pill">${esc(t(c.grade))}</span></div><div><span class="t">${t("Batareya")}</span><span class="pill">${W.batt}%${hasCycles(m) && W.cyc != null ? " · " + t("{n} sikl", {n: W.cyc}) : ""}</span></div>${hasEsim(m) && W.sim ? `<div><span class="t">SIM</span><span class="pill">${W.sim === "esim" ? "eSIM + eSIM" : "SIM + eSIM"}</span></div>` : ""}</div>
   <div class="price"><div class="price-top"><div class="ic">$</div><div><small>${t("Taxminiy narx")}</small><b>${t("Telefoningiz qiymati")}</b></div></div><div class="total"><span>${t("Jami:")}</span><b>${sum(c.uzs)}</b></div></div>
-  ${warnHtml()}`;
+  ${warnHtml()}
+  ${W.pre ? "" : `<h3 style="margin:18px 0 0">${t("Keyingi qadam")}</h3><div class="modes">
+    <button class="opt ${W.mode === "trade" ? "on" : ""}" data-act="modeTrade"><b>🔄 ${t("Trade-in qilish")}</b><small>${t("Telefoningizni topshirib, yangisini olasiz")}</small></button>
+    <button class="opt ${W.mode === "sell" ? "on" : ""}" data-act="modeSell"><b>💰 ${t("Sotish")}</b><small>${t("Telefoningizni bizga sotasiz")}</small></button></div>`}`;
 }
 function renderCompare() {
   const s = ourStock(), el = $("#compare"); if (!el) return; if (!s) { el.innerHTML = ""; return; }
@@ -899,7 +905,7 @@ function renderAction() {
   if (W.done || !W.started || (W.step === 0 && W.q < SUMMARY)) { bar.innerHTML = ""; $("#actionBar").classList.add("hidden"); return; }
   $("#actionBar").classList.remove("hidden");
   if (W.step === 3) { bar.innerHTML = `<button class="btn green" data-act="next" ${canNext() ? "" : "disabled"}>${W.saving ? t("Yuborilmoqda…") : W.sell ? "✓ " + t("Murojaatni yuborish") : t("✓ Arizani yuborish")}</button>`; return; }
-  const label = W.sell ? "Murojaat qoldirish" : {1: "Yangi telefon tanlash", 2: "To'lovga o'tish", 3: "Ariza qoldirish"}[nextStep(W.step)];
+  const label = W.step === 0 && !W.pre && !W.mode ? "Trade-in yoki Sotishni tanlang" : W.sell ? "Murojaat qoldirish" : {1: "Yangi telefon tanlash", 2: "To'lovga o'tish", 3: "Ariza qoldirish"}[nextStep(W.step)];
   bar.innerHTML = `${W.step > 0 ? `<button class="btn sec" data-act="prev">${t("Orqaga")}</button>` : ""}<button class="btn pri" data-act="next" ${canNext() ? "" : "disabled"}>${t(label)}</button>`;
 }
 const refreshNext = () => { const b = document.querySelector("[data-act=next]"); if (b) b.disabled = !canNext(); };
@@ -940,7 +946,7 @@ async function saveAriza() {
     // Admin narxlarni o'zgartirgan bo'lsa — mijoz eski narx bilan ariza yubormasin
     const fresh = (await getDoc(doc(db, "settings", "main"))).data();
     if (stable(fresh) !== stable(S.settings)) {
-      S.settings = fresh; W.saving = false; W.step = 0; W.q = SUMMARY; W.sell = false; renderWizard(); window.scrollTo(0, 0);
+      S.settings = fresh; W.saving = false; W.step = 0; W.q = SUMMARY; W.sell = false; W.mode = null; renderWizard(); window.scrollTo(0, 0);
       return toast(t("Narxlar yangilandi. Yangi bahoni ko'rib, arizani qayta yuboring"), true);
     }
     const diff = st ? sellUzs(st.sellUsd) - c.uzs : 0, p = st && diff > 0 ? plan(diff, W.months) : null;
@@ -987,9 +993,11 @@ document.addEventListener("click", e => {
   const a = b.dataset.act;
   if (b.dataset.lang) { LANG = b.dataset.lang; try { localStorage.setItem("lang", LANG); } catch (er) {} return renderWizard(); }
   if (b.dataset.ans) return answer(b.dataset.ans, b.dataset.v);
-  if (a === "start") { Object.assign(W, {started: true, pre: false, sell: false, stockId: null, step: 0}); renderWizard(); return goTop(); }
+  // Baholashdan keyin mijoz tanlaydi: trade-in (yangi telefon tanlash) yoki sotish (murojaat)
+  if (a === "modeTrade" || a === "modeSell") { W.mode = a === "modeTrade" ? "trade" : "sell"; W.sell = W.mode === "sell"; renderWizard(); return; }
+  if (a === "start") { Object.assign(W, {started: true, pre: false, sell: false, mode: null, stockId: null, step: 0}); renderWizard(); return goTop(); }
   // Faqat sotish: baholash → murojaat (telefon tanlanmaydi)
-  if (a === "startSell") { Object.assign(W, {started: true, pre: false, sell: true, stockId: null, step: 0}); renderWizard(); return goTop(); }
+  if (a === "startSell") { Object.assign(W, {started: true, pre: false, sell: true, mode: "sell", stockId: null, step: 0}); renderWizard(); return goTop(); }
   if (a === "pickBuy") { Object.assign(W, {pick: false, buy: true, pre: false, step: 2}); renderWizard(); return goTop(); }
   if (a === "pickTrade") { Object.assign(W, {pick: false, buy: false, pre: true, step: 0}); renderWizard(); return goTop(); }
   if (a === "home") { Object.assign(W, {started: false, pre: false, sell: false, buy: false, pick: false, stockId: null, step: 0}); renderWizard(); return goTop(); }
