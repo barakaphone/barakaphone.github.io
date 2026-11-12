@@ -273,6 +273,9 @@ select.inp{appearance:auto}
 .admtels{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-6px 0 18px}.admtels .admtel{margin:0}@media (max-width:640px){.admtels{grid-template-columns:1fr}}
 .admtel{display:flex;align-items:center;justify-content:center;gap:6px;margin:-6px 0 18px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--g);text-decoration:none;font-size:16px}
 .hbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}.hbtns.one{grid-template-columns:1fr}
+.pplans{display:grid;grid-template-columns:1fr;gap:4px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:12.5px}.pplans .pdiff{grid-column:1/-1;color:var(--muted)}.pplans .pdiff b{color:var(--text,#0b1220)}
+.pplans .pm{display:flex;justify-content:space-between;gap:6px;white-space:nowrap;background:var(--g-soft,#eef2fb);border-radius:8px;padding:4px 7px}.pplans .pm i{font-style:normal;color:var(--muted)}.pplans .pm b{color:var(--g)}
+.sellonly{margin:22px 0 90px;padding-top:16px;border-top:1px solid var(--line);text-align:center;color:var(--muted)}.sellonly .btn{margin-top:10px}
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 4px}.modes .opt{display:block;text-align:left;padding:14px 16px;min-height:0}.modes .opt small{display:block;margin-top:4px;font-weight:400}.modes .opt.on small{color:#cfd8f3}.modes .opt b{display:block;font-size:17px}.modes .opt small{color:var(--muted)}
 @media (max-width:640px){.hbtns{grid-template-columns:1fr}}
 .phin{display:flex;align-items:stretch}
@@ -318,7 +321,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ================= VERSIYA VA AVTO-YANGILANISH ================= */
-const APP_VERSION = "2026.11.11-1";
+const APP_VERSION = "2026.11.12-1";
 (async () => {
   try {
     const r = await fetch(location.pathname + "?check=" + Date.now(), {cache: "no-store"});
@@ -531,6 +534,7 @@ const COLOR_RU = {"black": "чёрный", "white": "белый", "silver": "с�
 
 /* ---- Til ---- */
 const RU = {
+  "Keyingi →": "Далее →", "Qo'shib to'laysiz": "Доплата", "Yangi telefon olmoqchi emasmisiz?": "Не хотите брать новый телефон?", "Sotish — faqat telefonimni sotaman": "Продать — только продаю свой телефон",
   "Telefonimni baholash →": "Оценить мой телефон →", "Keyingi qadam": "Следующий шаг", "Trade-in qilish": "Trade-in (обмен)", "Telefoningizni topshirib, yangisini olasiz": "Сдаёте свой телефон и получаете новый",
   "Sotish": "Продать", "Telefoningizni bizga sotasiz": "Продаёте телефон нам", "Trade-in yoki Sotishni tanlang": "Выберите: Trade-in или Продать",
   "Telefoningiz qaysi brend?": "Какой у вас бренд телефона?", "Model nomini yozing, masalan S24 Ultra": "Введите модель, например S24 Ultra",
@@ -714,7 +718,7 @@ const imgOf = s => { const src = colorImg(s) || modelOfStock(s)?.img || appleImg
 window.PHONE_SVG = PHONE_SVG;
 
 function canNext() {
-  if (W.step === 0) return W.q === SUMMARY && !!clientCalc() && (W.pre || !!W.mode);
+  if (W.step === 0) return W.q === SUMMARY && !!clientCalc();
   if (W.step === 1) return !!ourStock();
   if (W.step === 3) return !W.saving && geoOk();
   return true;
@@ -726,13 +730,21 @@ const stepName = s => t(W.sell && s === 3 ? "Murojaat" : STEPS[s]);
 function hero(ic, ti, s) { return `<div class="hero"><div class="ic">${ic}</div><div><b>${ti}</b><span>${s}</span></div></div>`; }
 
 /* ---- Telefon kartochkasi: rasm, ma'lumotlar, narx ---- */
+// Trade-in'da: eski telefon narxi ayirilgandan keyingi qolgan summa 3 / 6 / 9 / 12 oyga bo'lingan oylik to'lov
+function plansHtml(s) {
+  const c = clientCalc(); if (!c) return "";
+  const diff = sellUzs(s.sellUsd) - c.uzs;
+  if (diff <= 0) return `<span class="pplans"><span class="pdiff">${t("Sizga qaytariladi")}: <b>${uzs(-diff)}</b></span></span>`;
+  const ms = [3, 6, 9, 12].filter(m => m <= maxM());
+  return `<span class="pplans"><span class="pdiff">${t("Qo'shib to'laysiz")}: <b>${uzs(diff)}</b></span>${ms.map(m => `<span class="pm"><i>${t("{n} oy", {n: m})}</i><b>${uzs(plan(diff, m).monthly)}</b></span>`).join("")}</span>`;
+}
 function pcard(s, on) {
   const isNew = s.cond === "yangi", specs = [s.battery ? t("Batareya {n}%", {n: s.battery}) : "", s.cyc != null && s.cyc !== "" ? t("{n} sikl", {n: s.cyc}) : "", s.box ? t(s.box === "yes" ? "Qutisi bor" : "Qutisiz") : "", s.grade ? gradeOf(s.grade) : ""].filter(Boolean);
   return `<button class="pcard ${on ? "on" : ""}" data-stock="${esc(s.id)}">
     <span class="pimg"><span class="pcond ${isNew ? "new" : ""}">${esc(t(isNew ? "Yangi" : "B/U"))}</span>${imgOf(s)}</span>
     <span class="pbody"><b class="pname">${esc(s.modelName)}</b><span class="pmeta">${esc(s.mem || "")}${s.color ? " · " + esc(colorUz(s.color)) : ""}</span>
       ${specs.length ? `<span class="pspecs">${specs.map(x => `<span>${esc(x)}</span>`).join("")}</span>` : ""}
-      <span class="pprice">${uzs(sellUzs(s.sellUsd))}</span>${S.branches.length > 1 ? `<span class="pbranch">${esc(bName(s.branchId))}</span>` : ""}</span></button>`;
+      <span class="pprice">${uzs(sellUzs(s.sellUsd))}</span>${W.started && W.step === 1 ? plansHtml(s) : ""}${S.branches.length > 1 ? `<span class="pbranch">${esc(bName(s.branchId))}</span>` : ""}</span></button>`;
 }
 const stockMatch = s => { const q = W.q2.trim().toLowerCase(); return !q || `${s.modelName} ${s.mem} ${s.color} ${colorUz(s.color)}`.toLowerCase().includes(q); };
 function renderStockGrid() {
@@ -765,7 +777,8 @@ function renderWizard() {
   if (W.pre && W.step === 0 && ourStock()) { const s = ourStock(); h += `<div class="chosen"><span class="pimg">${imgOf(s)}</span><div><small>${t("Siz tanlagan telefon")}</small><b>${esc(s.modelName)} ${esc(s.mem || "")}</b><span>${uzs(sellUzs(s.sellUsd))}</span></div><button class="qback" data-act="home">${t("O'zgartirish")}</button></div>`; }
   if (W.step === 0 && QS[W.q]?.k === "brand" && brandList().length < 2) { W.brand = brandList()[0] || ""; W.q++; }
   if (W.step === 0) h += W.q < SUMMARY ? questionHtml() : summaryHtml();
-  if (W.step === 1) h += hero("⇄", t("Yangi telefonni tanlang"), t("Do'konlarimizda sotuvdagi telefonlar")) + `<input class="inp" id="q2" placeholder="${esc(t("Qidirish: model, xotira yoki rang"))}" value="${esc(W.q2)}" style="margin-bottom:12px"><div class="pgrid" id="stockGrid"></div><div id="compare"></div>`;
+  if (W.step === 1) h += hero("⇄", t("Yangi telefonni tanlang"), t("Do'konlarimizda sotuvdagi telefonlar")) + `<input class="inp" id="q2" placeholder="${esc(t("Qidirish: model, xotira yoki rang"))}" value="${esc(W.q2)}" style="margin-bottom:12px"><div class="pgrid" id="stockGrid"></div><div id="compare"></div>
+    <div class="sellonly"><div>${t("Yangi telefon olmoqchi emasmisiz?")}</div><button class="btn sec block" data-act="sellOnly">💰 ${t("Sotish — faqat telefonimni sotaman")}</button></div>`;
   if (W.step === 2) h += payHtml();
   if (W.step === 3) h += formHtml();
   el.innerHTML = h;
@@ -817,10 +830,7 @@ function summaryHtml() {
   <button class="qback" data-act="redo">${t("Javoblarni qaytadan ko'rib chiqish")}</button>
   <div class="extra"><div><span class="t">${t("Qutisi")}</span><span class="pill">${t(W.box === "no" ? "Yo'q" : "Bor")}</span></div><div><span class="t">${t("Holati")}</span><span class="pill">${esc(t(c.grade))}</span></div><div><span class="t">${t("Batareya")}</span><span class="pill">${W.batt}%${hasCycles(m) && W.cyc != null ? " · " + t("{n} sikl", {n: W.cyc}) : ""}</span></div>${hasEsim(m) && W.sim ? `<div><span class="t">SIM</span><span class="pill">${W.sim === "esim" ? "eSIM + eSIM" : "SIM + eSIM"}</span></div>` : ""}</div>
   <div class="price"><div class="price-top"><div class="ic">$</div><div><small>${t("Taxminiy narx")}</small><b>${t("Telefoningiz qiymati")}</b></div></div><div class="total"><span>${t("Jami:")}</span><b>${sum(c.uzs)}</b></div></div>
-  ${warnHtml()}
-  ${W.pre ? "" : `<h3 style="margin:18px 0 0">${t("Keyingi qadam")}</h3><div class="modes">
-    <button class="opt ${W.mode === "trade" ? "on" : ""}" data-act="modeTrade"><b>🔄 ${t("Trade-in qilish")}</b><small>${t("Telefoningizni topshirib, yangisini olasiz")}</small></button>
-    <button class="opt ${W.mode === "sell" ? "on" : ""}" data-act="modeSell"><b>💰 ${t("Sotish")}</b><small>${t("Telefoningizni bizga sotasiz")}</small></button></div>`}`;
+  ${warnHtml()}`;
 }
 function renderCompare() {
   const s = ourStock(), el = $("#compare"); if (!el) return; if (!s) { el.innerHTML = ""; return; }
@@ -905,7 +915,7 @@ function renderAction() {
   if (W.done || !W.started || (W.step === 0 && W.q < SUMMARY)) { bar.innerHTML = ""; $("#actionBar").classList.add("hidden"); return; }
   $("#actionBar").classList.remove("hidden");
   if (W.step === 3) { bar.innerHTML = `<button class="btn green" data-act="next" ${canNext() ? "" : "disabled"}>${W.saving ? t("Yuborilmoqda…") : W.sell ? "✓ " + t("Murojaatni yuborish") : t("✓ Arizani yuborish")}</button>`; return; }
-  const label = W.step === 0 && !W.pre && !W.mode ? "Trade-in yoki Sotishni tanlang" : W.sell ? "Murojaat qoldirish" : {1: "Yangi telefon tanlash", 2: "To'lovga o'tish", 3: "Ariza qoldirish"}[nextStep(W.step)];
+  const label = W.step === 0 && !W.pre ? "Keyingi →" : W.sell ? "Murojaat qoldirish" : {1: "Yangi telefon tanlash", 2: "To'lovga o'tish", 3: "Ariza qoldirish"}[nextStep(W.step)];
   bar.innerHTML = `${W.step > 0 ? `<button class="btn sec" data-act="prev">${t("Orqaga")}</button>` : ""}<button class="btn pri" data-act="next" ${canNext() ? "" : "disabled"}>${t(label)}</button>`;
 }
 const refreshNext = () => { const b = document.querySelector("[data-act=next]"); if (b) b.disabled = !canNext(); };
@@ -1009,6 +1019,9 @@ document.addEventListener("click", e => {
   if (a === "cycSkip") return answer("cyc", null);
   if (a === "cycOk") { const v = $("#cycN").value; if (v === "") return toast(t("Sikl sonini kiriting")); return answer("cyc", Math.max(0, Math.round(+v))); }
   if (a === "prev" && W.buy && W.step === 2) { Object.assign(W, {buy: false, pick: true}); renderWizard(); return goTop(); }
+  if (a === "sellOnly") { Object.assign(W, {sell: true, mode: "sell", stockId: null, step: 3}); renderWizard(); return goTop(); }
+  // "Faqat sotaman" formasidan orqaga — telefonlar ro'yxatiga qaytadi
+  if (a === "prev" && W.mode === "sell" && W.step === 3 && !W.pre) { Object.assign(W, {sell: false, mode: null, step: 1}); renderWizard(); return goTop(); }
   if (a === "prev") { W.step = prevStep(W.step); renderWizard(); return goTop(); }
   if (a === "next" && canNext()) { if (W.step === 3) return saveAriza(); W.step = nextStep(W.step); renderWizard(); return goTop(); }
   if (a === "geoRetry") { GEO = null; return detectRegion(); }
